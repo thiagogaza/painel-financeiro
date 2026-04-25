@@ -304,42 +304,7 @@
     .module-arrow svg { width: 14px; height: 14px; color: var(--text2); transition: color 0.3s; }
     .module-card:hover .module-arrow svg { color: white; }
 
-    /* STATS ROW */
-    .stats-row {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 12px; margin-bottom: 40px;
-      animation: fadeUp 0.6s 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-    }
 
-    @media (max-width: 600px) {
-      .stats-row { grid-template-columns: 1fr; }
-    }
-
-    .stat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 20px;
-      transition: background var(--transition), border-color var(--transition);
-    }
-
-    .stat-label {
-      font-size: 11px; color: var(--text3); letter-spacing: 0.08em;
-      text-transform: uppercase; margin-bottom: 8px;
-      transition: color var(--transition);
-    }
-
-    .stat-value {
-      font-family: 'Playfair Display', serif;
-      font-size: 22px; font-weight: 500; color: var(--text);
-      transition: color var(--transition);
-    }
-
-    .stat-value.positive { color: var(--cyan); }
-    .stat-value.neutral { color: var(--text2); }
-
-    .stat-sub {
-      font-size: 11px; color: var(--text3); margin-top: 4px;
-      transition: color var(--transition);
-    }
 
     /* FOOTER */
     .page-footer {
@@ -462,25 +427,7 @@
 
     </div>
 
-    <!-- STATS -->
-    <div class="section-title">Resumo rápido</div>
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">Mês atual</div>
-        <div class="stat-value neutral" id="currentMonth">—</div>
-        <div class="stat-sub">Em construção</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Saldo caixa</div>
-        <div class="stat-value positive">—</div>
-        <div class="stat-sub">Em construção</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Patrimônio</div>
-        <div class="stat-value positive">—</div>
-        <div class="stat-sub">Em construção</div>
-      </div>
-    </div>
+
 
   </main>
 
