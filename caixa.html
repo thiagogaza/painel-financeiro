@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caixa — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --green: #34D399;
+      --red: #F87171;
+      --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE;
+      --card: #FFFFFF;
+      --card2: #FAFAFA;
+      --text: #1A1A1A;
+      --text2: #6B6B6B;
+      --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.04);
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --input-bg: #F5F2EE;
+      --row-hover: rgba(0,0,0,0.02);
+      --row-even: rgba(0,0,0,0.01);
+      --toggle-bg: #E0DDD8;
+      --header-bg: rgba(255,255,255,0.95);
+    }
+
+    body.dark {
+      --bg: #111214;
+      --card: #1E2024;
+      --card2: #23262B;
+      --text: #F0EDE8;
+      --text2: #888888;
+      --text3: #555555;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.03);
+      --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --input-bg: #15171A;
+      --row-hover: rgba(255,255,255,0.03);
+      --row-even: rgba(255,255,255,0.01);
+      --toggle-bg: #2A2D32;
+      --header-bg: rgba(30,32,36,0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* HEADER */
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .header-inner {
+      max-width: 1300px; margin: 0 auto;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px;
+      font-size: 13px; color: var(--text2);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; text-decoration: none;
+    }
+
+    .back-btn:hover { border-color: var(--salmon); color: var(--salmon); }
+
+    .page-title {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .page-title-icon {
+      width: 32px; height: 32px; background: var(--salmon);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    .page-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .toggle-btn {
+      width: 44px; height: 24px; background: var(--toggle-bg);
+      border-radius: 12px; border: none; cursor: pointer;
+      position: relative; transition: background var(--transition);
+    }
+
+    .toggle-btn::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--salmon);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    /* MAIN */
+    main {
+      max-width: 1300px; margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* MONTH NAV */
+    .month-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .month-nav-left { display: flex; align-items: center; gap: 12px; }
+
+    .month-arrow {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--input-bg); border: 1px solid var(--border);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--text2); transition: all 0.2s;
+    }
+
+    .month-arrow:hover { border-color: var(--salmon); color: var(--salmon); }
+
+    .month-arrow svg { width: 14px; height: 14px; }
+
+    .month-display {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500; color: var(--text);
+      min-width: 180px; text-align: center;
+      transition: color var(--transition);
+    }
+
+    .month-nav-right { display: flex; align-items: center; gap: 10px; }
+
+    .month-badge {
+      font-size: 11px; color: var(--text3); letter-spacing: 0.06em;
+      text-transform: uppercase; transition: color var(--transition);
+    }
+
+    /* SALDO CARDS */
+    .saldo-cards {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) { .saldo-cards { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .saldo-cards { grid-template-columns: 1fr; } }
+
+    .saldo-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+      box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .saldo-card-label {
+      font-size: 11px; color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-bottom: 6px;
+      transition: color var(--transition);
+    }
+
+    .saldo-card-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 500;
+      transition: color var(--transition);
+    }
+
+    .saldo-card-value.green { color: var(--green); }
+    .saldo-card-value.red { color: var(--red); }
+    .saldo-card-value.blue { color: var(--cyan); }
+    .saldo-card-value.main { color: var(--text); }
+
+    .saldo-card.inicial {
+      border-left: 3px solid var(--cyan);
+      cursor: pointer;
+    }
+
+    .saldo-inicial-edit {
+      display: flex; align-items: center; gap: 8px; margin-top: 4px;
+    }
+
+    .saldo-inicial-input {
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 8px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); width: 120px; outline: none;
+      display: none;
+      transition: border-color 0.2s;
+    }
+
+    .saldo-inicial-input:focus { border-color: var(--cyan); }
+
+    .saldo-edit-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text3); font-size: 11px;
+      transition: color 0.2s;
+    }
+
+    .saldo-edit-btn:hover { color: var(--cyan); }
+
+    /* ADD ROW FORM */
+    .add-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .add-form-title {
+      font-size: 11px; color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-bottom: 12px;
+      transition: color var(--transition);
+    }
+
+    .add-form-fields {
+      display: grid;
+      grid-template-columns: 120px 1fr 160px 130px 130px 100px;
+      gap: 8px; align-items: end;
+    }
+
+    @media (max-width: 900px) {
+      .add-form-fields { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .add-form-fields { grid-template-columns: 1fr; }
+    }
+
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .field-label {
+      font-size: 10px; color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase; transition: color var(--transition);
+    }
+
+    .field-input {
+      background: var(--input-bg); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none; width: 100%;
+      transition: border-color 0.2s, background var(--transition), color var(--transition);
+    }
+
+    .field-input:focus { border-color: var(--salmon); }
+    .field-input::placeholder { color: var(--text3); }
+
+    .field-input.credito:focus { border-color: var(--green); }
+    .field-input.debito:focus { border-color: var(--red); }
+
+    /* AUTOCOMPLETE */
+    .autocomplete-wrap { position: relative; }
+
+    .autocomplete-list {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 300;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: var(--shadow);
+      max-height: 200px; overflow-y: auto;
+      display: none; margin-top: 4px;
+    }
+
+    .autocomplete-list.show { display: block; }
+
+    .autocomplete-item {
+      padding: 10px 14px; font-size: 13px; color: var(--text2);
+      cursor: pointer; transition: background 0.15s;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: var(--row-hover); color: var(--text); }
+    .autocomplete-item.highlighted { background: var(--salmon); color: white; }
+
+    .btn-add {
+      background: var(--salmon); color: white;
+      border: none; border-radius: 10px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(224,112,96,0.3); }
+    .btn-add:active { transform: translateY(0); }
+
+    /* TABLE */
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .table-header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      transition: border-color var(--transition);
+    }
+
+    .table-header-bar h2 {
+      font-size: 13px; font-weight: 600; color: var(--text2);
+      letter-spacing: 0.04em; transition: color var(--transition);
+    }
+
+    .table-count {
+      font-size: 12px; color: var(--text3);
+      background: var(--input-bg); border-radius: 20px;
+      padding: 3px 10px; transition: all var(--transition);
+    }
+
+    .table-scroll { overflow-x: auto; }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      background: var(--card2); padding: 10px 14px;
+      font-size: 10px; font-weight: 600; color: var(--text3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      text-align: left; border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border2);
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr:nth-child(even) { background: var(--row-even); }
+    tbody tr:nth-child(even):hover { background: var(--row-hover); }
+    tbody tr.day-separator { border-bottom: 2px solid var(--border); }
+
+    tbody td {
+      padding: 10px 14px; color: var(--text2);
+      vertical-align: middle;
+      transition: color var(--transition);
+    }
+
+    tbody td.data-col { color: var(--text3); font-size: 12px; white-space: nowrap; }
+    tbody td.historico-col { color: var(--text); font-weight: 500; max-width: 240px; }
+    tbody td.classe-col { font-size: 12px; }
+
+    .classe-tag {
+      display: inline-block; background: var(--input-bg);
+      border-radius: 6px; padding: 2px 8px;
+      font-size: 11px; color: var(--text2);
+      border: 1px solid var(--border);
+    }
+
+    tbody td.credito-col { color: var(--green); font-weight: 500; text-align: right; }
+    tbody td.debito-col { color: var(--red); font-weight: 500; text-align: right; }
+    tbody td.saldo-col { color: var(--text); font-weight: 600; text-align: right; font-family: 'Playfair Display', serif; }
+    tbody td.conf-col { text-align: center; }
+
+    .conf-ok {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(52,211,153,0.1); color: var(--green);
+      border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+    }
+
+    .conf-input {
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 3px 8px;
+      font-size: 11px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none; width: 80px;
+      transition: border-color 0.2s;
+    }
+
+    .conf-input:focus { border-color: var(--salmon); }
+
+    .delete-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text3); padding: 4px; border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+      opacity: 0;
+    }
+
+    tbody tr:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--text3);
+    }
+
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* FOOTER TOTAL */
+    .table-footer {
+      display: flex; align-items: center; justify-content: flex-end; gap: 24px;
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      background: var(--card2);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .footer-item { display: flex; align-items: center; gap: 8px; }
+    .footer-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+    .footer-value { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; }
+    .footer-value.green { color: var(--green); }
+    .footer-value.red { color: var(--red); }
+    .footer-value.main { color: var(--text); }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 18px;
+      font-size: 13px; color: var(--text);
+      box-shadow: var(--shadow);
+      display: none; align-items: center; gap: 8px;
+      animation: slideUp 0.3s ease;
+    }
+
+    .toast.show { display: flex; }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* LOADING */
+    .loading-row td {
+      text-align: center; padding: 40px;
+      color: var(--text3); font-size: 13px;
+    }
+  </style>
+</head>
+<body class="light">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">💰</div>
+          <h1>Caixa</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="toggle-btn" onclick="toggleTheme()" aria-label="Alternar tema"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- MONTH NAV -->
+    <div class="month-nav">
+      <div class="month-nav-left">
+        <button class="month-arrow" onclick="changeMonth(-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="month-display" id="monthDisplay">—</div>
+        <button class="month-arrow" onclick="changeMonth(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="month-nav-right">
+        <span class="month-badge" id="monthBadge">—</span>
+      </div>
+    </div>
+
+    <!-- SALDO CARDS -->
+    <div class="saldo-cards">
+      <div class="saldo-card inicial">
+        <div class="saldo-card-label">Saldo Inicial</div>
+        <div class="saldo-inicial-edit">
+          <div class="saldo-card-value blue" id="saldoInicialDisplay">R$ 0,00</div>
+          <button class="saldo-edit-btn" onclick="toggleSaldoEdit()" id="saldoEditBtn">✏️ editar</button>
+        </div>
+        <input type="number" class="saldo-inicial-input" id="saldoInicialInput" placeholder="0,00" step="0.01" onkeydown="handleSaldoKey(event)" />
+      </div>
+      <div class="saldo-card">
+        <div class="saldo-card-label">Total Créditos</div>
+        <div class="saldo-card-value green" id="totalCreditos">R$ 0,00</div>
+      </div>
+      <div class="saldo-card">
+        <div class="saldo-card-label">Total Débitos</div>
+        <div class="saldo-card-value red" id="totalDebitos">R$ 0,00</div>
+      </div>
+      <div class="saldo-card">
+        <div class="saldo-card-label">Saldo Atual</div>
+        <div class="saldo-card-value main" id="saldoAtual">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="add-form">
+      <div class="add-form-title">Novo lançamento</div>
+      <div class="add-form-fields">
+
+        <div class="field-group">
+          <div class="field-label">Data</div>
+          <input type="date" class="field-input" id="inputData" />
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Histórico</div>
+          <div class="autocomplete-wrap">
+            <input type="text" class="field-input" id="inputHistorico" placeholder="Descrição do lançamento" autocomplete="off" oninput="autocomplete('historico')" onkeydown="handleAutocompleteKey(event, 'historico')" onfocus="autocomplete('historico')" />
+            <div class="autocomplete-list" id="autocompleteHistorico"></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Classe</div>
+          <div class="autocomplete-wrap">
+            <input type="text" class="field-input" id="inputClasse" placeholder="Classe" autocomplete="off" oninput="autocomplete('classe')" onkeydown="handleAutocompleteKey(event, 'classe')" onfocus="autocomplete('classe')" />
+            <div class="autocomplete-list" id="autocompleteClasse"></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Crédito (R$)</div>
+          <input type="number" class="field-input credito" id="inputCredito" placeholder="0,00" step="0.01" min="0" />
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Débito (R$)</div>
+          <input type="number" class="field-input debito" id="inputDebito" placeholder="0,00" step="0.01" min="0" />
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">&nbsp;</div>
+          <button class="btn-add" onclick="addLancamento()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>Lançamentos do mês</h2>
+        <span class="table-count" id="tableCount">0 registros</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Histórico</th>
+              <th>Classe</th>
+              <th style="text-align:right">Crédito</th>
+              <th style="text-align:right">Débito</th>
+              <th style="text-align:right">Saldo</th>
+              <th style="text-align:center">Conf.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr class="loading-row">
+              <td colspan="8">Carregando lançamentos...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="footer-item">
+          <span class="footer-label">Créditos</span>
+          <span class="footer-value green" id="footerCreditos">R$ 0,00</span>
+        </div>
+        <div class="footer-item">
+          <span class="footer-label">Débitos</span>
+          <span class="footer-value red" id="footerDebitos">R$ 0,00</span>
+        </div>
+        <div class="footer-item">
+          <span class="footer-label">Saldo Final</span>
+          <span class="footer-value main" id="footerSaldo">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    // ─── STATE ───────────────────────────────────────────────────────
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+    let lancamentos = [];
+    let saldoInicial = 0;
+    let editingSaldoInicial = false;
+
+    // Autocomplete data (will be loaded from Supabase later)
+    const historicos = [
+      'VENDA', 'PAGAMENTO MOTOBOY', 'COMPRA MERCADO', 'OS ', 'PEDIDO ',
+      'DEPOSITO', 'TRANSFERENCIA', 'GAZA - MERCADO', 'GAZA - FARMACIA',
+      'PAGAMENTO FORNECEDOR', 'FRETE', 'GILMAR ZOBOLI', 'AGUA', 'LUZ',
+      'ALUGUEL', 'PRO-LABORE', 'BENEFICIO FUNCIONARIOS'
+    ];
+
+    const classes = [
+      'COBRANCA', 'MATERIAL DE REVENDA', 'MATERIAL DE EXPEDIENTE',
+      'FRETE', 'PROLABORE', 'BENEFICIO A FUNCIONARIOS',
+      'PUBLICIDADE E PROPAGANDA', 'TRANSFERENCIA ENTRE CONTAS',
+      'SERVICOS', 'IMPOSTOS', 'SALARIOS', 'ALUGUEL', 'ENERGIA',
+      'AGUA', 'TELEFONE', 'INTERNET'
+    ];
+
+    // ─── THEME ───────────────────────────────────────────────────────
+    let manualOverride = false;
+
+    function getSunsetHour() {
+      const month = new Date().getMonth();
+      if (month >= 10 || month <= 2) return 19;
+      if (month >= 4 && month <= 7) return 17;
+      return 18;
+    }
+
+    function getAutoTheme() {
+      const hour = new Date().getHours();
+      return (hour >= getSunsetHour() || hour < 6) ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.remove('light', 'dark');
+      document.body.classList.add(theme);
+    }
+
+    function toggleTheme() {
+      manualOverride = true;
+      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+
+    // ─── MONTH NAV ───────────────────────────────────────────────────
+    function updateMonthDisplay() {
+      const date = new Date(currentYear, currentMonth - 1, 1);
+      const monthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      document.getElementById('monthDisplay').textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+      const today = new Date();
+      const isCurrentMonth = currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1;
+      document.getElementById('monthBadge').textContent = isCurrentMonth ? 'Mês atual' : '';
+    }
+
+    function changeMonth(dir) {
+      currentMonth += dir;
+      if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+      if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+      updateMonthDisplay();
+      loadLancamentos();
+      loadSaldoInicial();
+    }
+
+    // ─── FORMAT ──────────────────────────────────────────────────────
+    function formatBRL(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    // ─── SALDO INICIAL ───────────────────────────────────────────────
+    async function loadSaldoInicial() {
+      const key = `saldo_inicial_${currentYear}_${String(currentMonth).padStart(2,'0')}`;
+      const { data } = await _supabase
+        .from('caixa_config')
+        .select('valor')
+        .eq('chave', key)
+        .maybeSingle();
+
+      saldoInicial = data ? parseFloat(data.valor) : 0;
+      document.getElementById('saldoInicialDisplay').textContent = formatBRL(saldoInicial);
+      updateSaldos();
+    }
+
+    function toggleSaldoEdit() {
+      const input = document.getElementById('saldoInicialInput');
+      const display = document.getElementById('saldoInicialDisplay');
+      const btn = document.getElementById('saldoEditBtn');
+
+      if (!editingSaldoInicial) {
+        input.value = saldoInicial;
+        input.style.display = 'block';
+        display.style.display = 'none';
+        btn.textContent = '✓ salvar';
+        input.focus();
+        editingSaldoInicial = true;
+      } else {
+        saveSaldoInicial();
+      }
+    }
+
+    async function saveSaldoInicial() {
+      const input = document.getElementById('saldoInicialInput');
+      const display = document.getElementById('saldoInicialDisplay');
+      const btn = document.getElementById('saldoEditBtn');
+      const val = parseFloat(input.value) || 0;
+
+      const key = `saldo_inicial_${currentYear}_${String(currentMonth).padStart(2,'0')}`;
+      await _supabase.from('caixa_config').upsert({ chave: key, valor: val.toString() }, { onConflict: 'chave' });
+
+      saldoInicial = val;
+      display.textContent = formatBRL(saldoInicial);
+      input.style.display = 'none';
+      display.style.display = 'block';
+      btn.textContent = '✏️ editar';
+      editingSaldoInicial = false;
+      updateSaldos();
+      showToast('Saldo inicial salvo!', 'success');
+    }
+
+    function handleSaldoKey(e) {
+      if (e.key === 'Enter') saveSaldoInicial();
+      if (e.key === 'Escape') {
+        document.getElementById('saldoInicialInput').style.display = 'none';
+        document.getElementById('saldoInicialDisplay').style.display = 'block';
+        document.getElementById('saldoEditBtn').textContent = '✏️ editar';
+        editingSaldoInicial = false;
+      }
+    }
+
+    // ─── LOAD LANCAMENTOS ────────────────────────────────────────────
+    async function loadLancamentos() {
+      document.getElementById('tableBody').innerHTML = '<tr class="loading-row"><td colspan="8">Carregando...</td></tr>';
+
+      const startDate = `${currentYear}-${String(currentMonth).padStart(2,'0')}-01`;
+      const endDate = `${currentYear}-${String(currentMonth).padStart(2,'0')}-31`;
+
+      const { data, error } = await _supabase
+        .from('caixa')
+        .select('*')
+        .gte('data', startDate)
+        .lte('data', endDate)
+        .order('data', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        showToast('Erro ao carregar lançamentos', 'error');
+        return;
+      }
+
+      lancamentos = data || [];
+      renderTable();
+      updateSaldos();
+    }
+
+    // ─── RENDER TABLE ────────────────────────────────────────────────
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      document.getElementById('tableCount').textContent = `${lancamentos.length} registro${lancamentos.length !== 1 ? 's' : ''}`;
+
+      if (lancamentos.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <p>Nenhum lançamento neste mês.<br>Use o formulário acima para adicionar.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      let saldo = saldoInicial;
+      let html = '';
+      let lastData = null;
+
+      lancamentos.forEach((row, i) => {
+        const credito = parseFloat(row.credito) || 0;
+        const debito = parseFloat(row.debito) || 0;
+        saldo += credito - debito;
+
+        const saldoColor = saldo >= 0 ? '' : 'style="color:var(--red)"';
+        const conf = row.conferencia || '';
+        const isOk = conf.toUpperCase() === 'OK';
+
+        // Detect day change for separator
+        const isDayChange = lastData !== null && lastData !== row.data;
+        const isLastOfDay = i === lancamentos.length - 1 || lancamentos[i + 1].data !== row.data;
+        lastData = row.data;
+
+        html += `
+          <tr class="${isDayChange ? 'day-separator' : ''}">
+            <td class="data-col">${formatDate(row.data)}</td>
+            <td class="historico-col">${row.historico || ''}</td>
+            <td class="classe-col"><span class="classe-tag">${row.classe || ''}</span></td>
+            <td class="credito-col">${credito > 0 ? formatBRL(credito) : ''}</td>
+            <td class="debito-col">${debito > 0 ? formatBRL(debito) : ''}</td>
+            <td class="saldo-col" ${saldoColor}>${formatBRL(saldo)}</td>
+            <td class="conf-col">
+              ${isLastOfDay
+                ? isOk
+                  ? `<span class="conf-ok">✓ OK</span>`
+                  : `<input class="conf-input" value="${conf}" placeholder="OK / obs" onblur="updateConferencia('${row.id}', this.value)" onkeydown="if(event.key==='Enter')this.blur()" />`
+                : ''
+              }
+            </td>
+            <td>
+              <button class="delete-btn" onclick="deleteLancamento('${row.id}')" title="Excluir">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // ─── UPDATE SALDOS ───────────────────────────────────────────────
+    function updateSaldos() {
+      let totalCreditos = 0;
+      let totalDebitos = 0;
+
+      lancamentos.forEach(row => {
+        totalCreditos += parseFloat(row.credito) || 0;
+        totalDebitos += parseFloat(row.debito) || 0;
+      });
+
+      const saldoFinal = saldoInicial + totalCreditos - totalDebitos;
+
+      document.getElementById('totalCreditos').textContent = formatBRL(totalCreditos);
+      document.getElementById('totalDebitos').textContent = formatBRL(totalDebitos);
+      document.getElementById('saldoAtual').textContent = formatBRL(saldoFinal);
+      document.getElementById('saldoAtual').className = `saldo-card-value ${saldoFinal >= 0 ? 'green' : 'red'}`;
+
+      document.getElementById('footerCreditos').textContent = formatBRL(totalCreditos);
+      document.getElementById('footerDebitos').textContent = formatBRL(totalDebitos);
+      document.getElementById('footerSaldo').textContent = formatBRL(saldoFinal);
+    }
+
+    // ─── ADD LANCAMENTO ──────────────────────────────────────────────
+    async function addLancamento() {
+      const data = document.getElementById('inputData').value;
+      const historico = document.getElementById('inputHistorico').value.trim().toUpperCase();
+      const classe = document.getElementById('inputClasse').value.trim().toUpperCase();
+      const credito = parseFloat(document.getElementById('inputCredito').value) || 0;
+      const debito = parseFloat(document.getElementById('inputDebito').value) || 0;
+
+      if (!data) { showToast('Informe a data', 'error'); return; }
+      if (!historico) { showToast('Informe o histórico', 'error'); return; }
+      if (credito === 0 && debito === 0) { showToast('Informe crédito ou débito', 'error'); return; }
+
+      const { error } = await _supabase.from('caixa').insert({
+        data, historico, classe,
+        credito: credito || null,
+        debito: debito || null,
+        conferencia: ''
+      });
+
+      if (error) {
+        showToast('Erro ao salvar lançamento', 'error');
+        return;
+      }
+
+      // Clear fields (keep date)
+      document.getElementById('inputHistorico').value = '';
+      document.getElementById('inputClasse').value = '';
+      document.getElementById('inputCredito').value = '';
+      document.getElementById('inputDebito').value = '';
+      document.getElementById('inputHistorico').focus();
+
+      await loadLancamentos();
+      showToast('Lançamento adicionado!', 'success');
+
+      // Save to autocomplete
+      saveToAutocomplete('historico', historico);
+      saveToAutocomplete('classe', classe);
+    }
+
+    // ─── UPDATE CONFERENCIA ──────────────────────────────────────────
+    async function updateConferencia(id, value) {
+      await _supabase.from('caixa').update({ conferencia: value }).eq('id', id);
+      const idx = lancamentos.findIndex(l => l.id === id);
+      if (idx !== -1) {
+        lancamentos[idx].conferencia = value;
+        renderTable();
+      }
+    }
+
+    // ─── DELETE ──────────────────────────────────────────────────────
+    async function deleteLancamento(id) {
+      if (!confirm('Excluir este lançamento?')) return;
+      await _supabase.from('caixa').delete().eq('id', id);
+      await loadLancamentos();
+      showToast('Lançamento excluído', 'success');
+    }
+
+    // ─── AUTOCOMPLETE ────────────────────────────────────────────────
+    let autocompleteData = { historico: [...historicos], classe: [...classes] };
+
+    function autocomplete(field) {
+      const input = document.getElementById(`input${field.charAt(0).toUpperCase() + field.slice(1)}`);
+      const list = document.getElementById(`autocomplete${field.charAt(0).toUpperCase() + field.slice(1)}`);
+      const val = input.value.toUpperCase();
+
+      const filtered = autocompleteData[field].filter(item =>
+        item.toUpperCase().includes(val) && item !== val
+      ).slice(0, 8);
+
+      if (filtered.length === 0 || !document.activeElement === input) {
+        list.classList.remove('show');
+        return;
+      }
+
+      list.innerHTML = filtered.map(item =>
+        `<div class="autocomplete-item" onmousedown="selectAutocomplete('${field}', '${item}')">${item}</div>`
+      ).join('');
+
+      list.classList.add('show');
+    }
+
+    function selectAutocomplete(field, value) {
+      const input = document.getElementById(`input${field.charAt(0).toUpperCase() + field.slice(1)}`);
+      const list = document.getElementById(`autocomplete${field.charAt(0).toUpperCase() + field.slice(1)}`);
+      input.value = value;
+      list.classList.remove('show');
+
+      if (field === 'historico') document.getElementById('inputClasse').focus();
+      if (field === 'classe') document.getElementById('inputCredito').focus();
+    }
+
+    function handleAutocompleteKey(e, field) {
+      const list = document.getElementById(`autocomplete${field.charAt(0).toUpperCase() + field.slice(1)}`);
+      const items = list.querySelectorAll('.autocomplete-item');
+      const highlighted = list.querySelector('.highlighted');
+      let idx = Array.from(items).indexOf(highlighted);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (highlighted) highlighted.classList.remove('highlighted');
+        idx = (idx + 1) % items.length;
+        items[idx]?.classList.add('highlighted');
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (highlighted) highlighted.classList.remove('highlighted');
+        idx = (idx - 1 + items.length) % items.length;
+        items[idx]?.classList.add('highlighted');
+      } else if (e.key === 'Enter') {
+        if (highlighted) {
+          e.preventDefault();
+          selectAutocomplete(field, highlighted.textContent);
+        } else {
+          list.classList.remove('show');
+          if (field === 'historico') document.getElementById('inputClasse').focus();
+          else if (field === 'classe') document.getElementById('inputCredito').focus();
+          else addLancamento();
+        }
+      } else if (e.key === 'Escape') {
+        list.classList.remove('show');
+      } else if (e.key === 'Tab') {
+        list.classList.remove('show');
+      }
+    }
+
+    function saveToAutocomplete(field, value) {
+      if (value && !autocompleteData[field].includes(value)) {
+        autocompleteData[field].push(value);
+      }
+    }
+
+    // Close autocomplete on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.autocomplete-wrap')) {
+        document.querySelectorAll('.autocomplete-list').forEach(l => l.classList.remove('show'));
+      }
+    });
+
+    // ─── TOAST ───────────────────────────────────────────────────────
+    let toastTimeout;
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+      toast.className = `toast show ${type}`;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ─── SET DEFAULT DATE ────────────────────────────────────────────
+    function setDefaultDate() {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      document.getElementById('inputData').value = yesterday.toISOString().split('T')[0];
+    }
+
+    // ─── INIT ────────────────────────────────────────────────────────
+    async function init() {
+      // Check auth
+      const { data } = await _supabase.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+
+      updateMonthDisplay();
+      setDefaultDate();
+      await loadSaldoInicial();
+      await loadLancamentos();
+    }
+
+    init();
+  </script>
+</body>
+</html>
