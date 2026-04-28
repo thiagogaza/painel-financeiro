@@ -68,6 +68,48 @@
       transition: background var(--transition), border-color var(--transition);
     }
 
+    /* QUICK NAV */
+    .quick-nav {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      overflow-x: auto;
+      scrollbar-width: none;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .quick-nav::-webkit-scrollbar { display: none; }
+
+    .quick-nav-inner {
+      max-width: 1300px; margin: 0 auto;
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 2px;
+    }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 5px;
+      padding: 8px 12px;
+      font-size: 12px; font-weight: 500;
+      color: var(--text2); text-decoration: none;
+      border-radius: 0; white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .nav-link.active {
+      color: var(--salmon);
+      border-bottom-color: var(--salmon);
+    }
+
+    .nav-link .nav-icon { font-size: 13px; }
+
+    .nav-divider {
+      width: 1px; height: 16px;
+      background: var(--border); margin: 0 4px; flex-shrink: 0;
+    }
+
     .header-inner {
       max-width: 1300px; margin: 0 auto;
       padding: 12px 24px;
@@ -482,6 +524,52 @@
     </div>
   </header>
 
+  <!-- QUICK NAV -->
+  <nav class="quick-nav">
+    <div class="quick-nav-inner">
+      <a href="dashboard.html" class="nav-link">
+        <span class="nav-icon">⌂</span> Dashboard
+      </a>
+      <div class="nav-divider"></div>
+      <a href="loja.html" class="nav-link">
+        <span class="nav-icon">🏪</span> Loja
+      </a>
+      <div class="nav-divider"></div>
+      <a href="caixa.html" class="nav-link active">
+        <span class="nav-icon">💰</span> Caixa
+      </a>
+      <a href="custos.html" class="nav-link">
+        <span class="nav-icon">📦</span> Custos
+      </a>
+      <a href="vendas.html" class="nav-link">
+        <span class="nav-icon">🛍️</span> Vendas
+      </a>
+      <a href="servicos.html" class="nav-link">
+        <span class="nav-icon">🔧</span> Serviços
+      </a>
+      <a href="compras.html" class="nav-link">
+        <span class="nav-icon">🛒</span> Compras
+      </a>
+      <a href="cartao.html" class="nav-link">
+        <span class="nav-icon">💳</span> Cartão
+      </a>
+      <div class="nav-divider"></div>
+      <a href="extrato-pj.html" class="nav-link">
+        <span class="nav-icon">🏦</span> Extrato PJ
+      </a>
+      <a href="extrato-pf.html" class="nav-link">
+        <span class="nav-icon">🏧</span> Extrato PF
+      </a>
+      <div class="nav-divider"></div>
+      <a href="emprestimos.html" class="nav-link">
+        <span class="nav-icon">💸</span> Empréstimos
+      </a>
+      <a href="garantia.html" class="nav-link">
+        <span class="nav-icon">🛡️</span> Garantia
+      </a>
+    </div>
+  </nav>
+
   <main>
 
     <!-- MONTH NAV -->
@@ -632,22 +720,6 @@
     let lancamentos = [];
     let saldoInicial = 0;
     let editingSaldoInicial = false;
-
-    // Autocomplete data (will be loaded from Supabase later)
-    const historicos = [
-      'VENDA', 'PAGAMENTO MOTOBOY', 'COMPRA MERCADO', 'OS ', 'PEDIDO ',
-      'DEPOSITO', 'TRANSFERENCIA', 'GAZA - MERCADO', 'GAZA - FARMACIA',
-      'PAGAMENTO FORNECEDOR', 'FRETE', 'GILMAR ZOBOLI', 'AGUA', 'LUZ',
-      'ALUGUEL', 'PRO-LABORE', 'BENEFICIO FUNCIONARIOS'
-    ];
-
-    const classes = [
-      'COBRANCA', 'MATERIAL DE REVENDA', 'MATERIAL DE EXPEDIENTE',
-      'FRETE', 'PROLABORE', 'BENEFICIO A FUNCIONARIOS',
-      'PUBLICIDADE E PROPAGANDA', 'TRANSFERENCIA ENTRE CONTAS',
-      'SERVICOS', 'IMPOSTOS', 'SALARIOS', 'ALUGUEL', 'ENERGIA',
-      'AGUA', 'TELEFONE', 'INTERNET'
-    ];
 
     // ─── THEME ───────────────────────────────────────────────────────
     let manualOverride = false;
@@ -936,7 +1008,23 @@
     }
 
     // ─── AUTOCOMPLETE ────────────────────────────────────────────────
-    let autocompleteData = { historico: [...historicos], classe: [...classes] };
+    let autocompleteData = { historico: [], classe: [] };
+
+    async function loadAutoCompleteData() {
+      const { data: descricoes } = await _supabase
+        .from('descricoes')
+        .select('texto, tipo')
+        .order('texto');
+
+      if (descricoes) {
+        autocompleteData.historico = descricoes
+          .filter(d => d.tipo === 'historico' || d.tipo === 'ambos')
+          .map(d => d.texto);
+        autocompleteData.classe = descricoes
+          .filter(d => d.tipo === 'classe' || d.tipo === 'ambos')
+          .map(d => d.texto);
+      }
+    }
 
     function autocomplete(field) {
       const input = document.getElementById(`input${field.charAt(0).toUpperCase() + field.slice(1)}`);
@@ -1034,12 +1122,12 @@
 
     // ─── INIT ────────────────────────────────────────────────────────
     async function init() {
-      // Check auth
       const { data } = await _supabase.auth.getSession();
       if (!data.session) { window.location.href = 'index.html'; return; }
 
       updateMonthDisplay();
       setDefaultDate();
+      await loadAutoCompleteData();
       await loadSaldoInicial();
       await loadLancamentos();
     }

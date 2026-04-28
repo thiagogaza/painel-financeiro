@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Descrições — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --green: #34D399;
+      --red: #F87171;
+      --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE; --card: #FFFFFF; --card2: #FAFAFA;
+      --text: #1A1A1A; --text2: #6B6B6B; --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.04);
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --input-bg: #F5F2EE; --toggle-bg: #E0DDD8;
+      --header-bg: rgba(255,255,255,0.95);
+    }
+
+    body.dark {
+      --bg: #111214; --card: #1E2024; --card2: #23262B;
+      --text: #F0EDE8; --text2: #888888; --text3: #555555;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.03);
+      --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --input-bg: #15171A; --toggle-bg: #2A2D32;
+      --header-bg: rgba(30,32,36,0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .header-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px;
+      font-size: 13px; color: var(--text2);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; text-decoration: none;
+    }
+
+    .back-btn:hover { border-color: var(--salmon); color: var(--salmon); }
+
+    .page-title { display: flex; align-items: center; gap: 10px; }
+
+    .page-title-icon {
+      width: 32px; height: 32px; background: var(--salmon);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    .page-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .toggle-btn {
+      width: 44px; height: 24px; background: var(--toggle-bg);
+      border-radius: 12px; border: none; cursor: pointer;
+      position: relative; transition: background var(--transition);
+    }
+
+    .toggle-btn::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--salmon);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    /* QUICK NAV */
+    .quick-nav {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      overflow-x: auto; scrollbar-width: none;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .quick-nav::-webkit-scrollbar { display: none; }
+
+    .quick-nav-inner {
+      max-width: 1300px; margin: 0 auto;
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 2px;
+    }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 5px;
+      padding: 8px 12px; font-size: 12px; font-weight: 500;
+      color: var(--text2); text-decoration: none;
+      white-space: nowrap; border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+    .nav-link.active { color: var(--salmon); border-bottom-color: var(--salmon); }
+    .nav-link .nav-icon { font-size: 13px; }
+
+    .nav-divider {
+      width: 1px; height: 16px;
+      background: var(--border); margin: 0 4px; flex-shrink: 0;
+    }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    .page-info {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px;
+      margin-bottom: 24px; font-size: 13px; color: var(--text2);
+      line-height: 1.6; box-shadow: var(--shadow);
+      transition: all var(--transition);
+    }
+
+    .page-info strong { color: var(--text); }
+
+    /* ADD FORM */
+    .add-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px 24px;
+      margin-bottom: 24px; box-shadow: var(--shadow);
+      transition: all var(--transition);
+    }
+
+    .add-form-title {
+      font-size: 11px; color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-bottom: 14px;
+    }
+
+    .add-form-fields {
+      display: grid; grid-template-columns: 1fr 200px auto;
+      gap: 10px; align-items: end;
+    }
+
+    @media (max-width: 600px) { .add-form-fields { grid-template-columns: 1fr; } }
+
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .field-label {
+      font-size: 10px; color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .field-input {
+      background: var(--input-bg); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none; width: 100%;
+      transition: border-color 0.2s, background var(--transition), color var(--transition);
+    }
+
+    .field-input:focus { border-color: var(--salmon); }
+    .field-input::placeholder { color: var(--text3); }
+
+    select.field-input { cursor: pointer; }
+
+    .btn-add {
+      background: var(--salmon); color: white;
+      border: none; border-radius: 10px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: transform 0.2s, box-shadow 0.2s; white-space: nowrap;
+    }
+
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(224,112,96,0.3); }
+
+    /* FILTER TABS */
+    .filter-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+
+    .filter-tab {
+      padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: var(--card);
+      color: var(--text2); transition: all 0.2s;
+    }
+
+    .filter-tab.active {
+      background: var(--salmon); color: white; border-color: var(--salmon);
+    }
+
+    .filter-tab:hover:not(.active) { border-color: var(--salmon); color: var(--salmon); }
+
+    /* TABLE */
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+      transition: all var(--transition);
+    }
+
+    .table-header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+    }
+
+    .table-header-bar h2 { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+    .table-count {
+      font-size: 12px; color: var(--text3);
+      background: var(--input-bg); border-radius: 20px; padding: 3px 10px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      background: var(--card2); padding: 10px 16px;
+      font-size: 10px; font-weight: 600; color: var(--text3);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr { border-bottom: 1px solid var(--border2); transition: background 0.15s; }
+    tbody tr:hover { background: var(--row-hover, rgba(0,0,0,0.02)); }
+
+    tbody td { padding: 11px 16px; color: var(--text2); }
+    tbody td.texto-col { color: var(--text); font-weight: 500; }
+
+    .tipo-badge {
+      display: inline-block; border-radius: 6px; padding: 2px 8px;
+      font-size: 11px; font-weight: 500;
+    }
+
+    .tipo-badge.historico { background: rgba(224,112,96,0.1); color: var(--salmon); }
+    .tipo-badge.classe { background: rgba(91,200,212,0.1); color: var(--cyan); }
+    .tipo-badge.ambos { background: rgba(52,211,153,0.1); color: var(--green); }
+
+    .delete-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text3); padding: 4px 8px; border-radius: 6px;
+      transition: all 0.2s; opacity: 0; font-size: 13px;
+    }
+
+    tbody tr:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
+
+    .empty-state {
+      text-align: center; padding: 48px 20px; color: var(--text3);
+    }
+
+    .empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 18px;
+      font-size: 13px; color: var(--text);
+      box-shadow: var(--shadow);
+      display: none; align-items: center; gap: 8px;
+    }
+
+    .toast.show { display: flex; }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="loja.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Loja
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">📝</div>
+          <h1>Descrições & Classes</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <nav class="quick-nav">
+    <div class="quick-nav-inner">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span> Dashboard</a>
+      <div class="nav-divider"></div>
+      <a href="loja.html" class="nav-link"><span class="nav-icon">🏪</span> Loja</a>
+      <div class="nav-divider"></div>
+      <a href="caixa.html" class="nav-link"><span class="nav-icon">💰</span> Caixa</a>
+      <a href="custos.html" class="nav-link"><span class="nav-icon">📦</span> Custos</a>
+      <a href="vendas.html" class="nav-link"><span class="nav-icon">🛍️</span> Vendas</a>
+      <a href="servicos.html" class="nav-link"><span class="nav-icon">🔧</span> Serviços</a>
+      <a href="compras.html" class="nav-link"><span class="nav-icon">🛒</span> Compras</a>
+      <a href="cartao.html" class="nav-link"><span class="nav-icon">💳</span> Cartão</a>
+      <div class="nav-divider"></div>
+      <a href="extrato-pj.html" class="nav-link"><span class="nav-icon">🏦</span> Extrato PJ</a>
+      <a href="extrato-pf.html" class="nav-link"><span class="nav-icon">🏧</span> Extrato PF</a>
+      <div class="nav-divider"></div>
+      <a href="emprestimos.html" class="nav-link"><span class="nav-icon">💸</span> Empréstimos</a>
+      <a href="garantia.html" class="nav-link"><span class="nav-icon">🛡️</span> Garantia</a>
+      <div class="nav-divider"></div>
+      <a href="descricoes.html" class="nav-link active"><span class="nav-icon">📝</span> Descrições</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <div class="page-info">
+      <strong>Como funciona:</strong> Cadastre aqui os textos que aparecem no autocomplete de todas as páginas.
+      Use <strong>Histórico</strong> para descrições de lançamentos (ex: GILMAR ZOBOLI, MERCADO),
+      <strong>Classe</strong> para categorias (ex: MATERIAL DE REVENDA, FRETE) e
+      <strong>Ambos</strong> quando o texto pode aparecer nos dois campos.
+    </div>
+
+    <div class="add-form">
+      <div class="add-form-title">Adicionar descrição</div>
+      <div class="add-form-fields">
+        <div class="field-group">
+          <div class="field-label">Texto</div>
+          <input type="text" class="field-input" id="inputTexto" placeholder="Ex: GILMAR ZOBOLI ou MATERIAL DE REVENDA" onkeydown="if(event.key==='Enter') addDescricao()" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Tipo</div>
+          <select class="field-input" id="inputTipo">
+            <option value="historico">Histórico</option>
+            <option value="classe">Classe</option>
+            <option value="ambos">Ambos</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">&nbsp;</div>
+          <button class="btn-add" onclick="addDescricao()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-tabs">
+      <div class="filter-tab active" onclick="filterBy('todos', this)">Todos</div>
+      <div class="filter-tab" onclick="filterBy('historico', this)">Histórico</div>
+      <div class="filter-tab" onclick="filterBy('classe', this)">Classe</div>
+      <div class="filter-tab" onclick="filterBy('ambos', this)">Ambos</div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>Cadastros</h2>
+        <span class="table-count" id="tableCount">0 registros</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Texto</th>
+            <th>Tipo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📝</div><p>Carregando...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    let allDescricoes = [];
+    let currentFilter = 'todos';
+
+    // THEME
+    let manualOverride = false;
+
+    function getSunsetHour() {
+      const month = new Date().getMonth();
+      if (month >= 10 || month <= 2) return 19;
+      if (month >= 4 && month <= 7) return 17;
+      return 18;
+    }
+
+    function getAutoTheme() {
+      const hour = new Date().getHours();
+      return (hour >= getSunsetHour() || hour < 6) ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.remove('light', 'dark');
+      document.body.classList.add(theme);
+    }
+
+    function toggleTheme() {
+      manualOverride = true;
+      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+
+    // LOAD
+    async function loadDescricoes() {
+      const { data } = await _supabase
+        .from('descricoes')
+        .select('*')
+        .order('tipo')
+        .order('texto');
+
+      allDescricoes = data || [];
+      renderTable();
+    }
+
+    // RENDER
+    function renderTable() {
+      const filtered = currentFilter === 'todos'
+        ? allDescricoes
+        : allDescricoes.filter(d => d.tipo === currentFilter);
+
+      document.getElementById('tableCount').textContent = `${filtered.length} registro${filtered.length !== 1 ? 's' : ''}`;
+
+      if (filtered.length === 0) {
+        document.getElementById('tableBody').innerHTML = `
+          <tr><td colspan="3">
+            <div class="empty-state">
+              <div class="empty-icon">📝</div>
+              <p>Nenhuma descrição cadastrada ainda.<br>Use o formulário acima para adicionar.</p>
+            </div>
+          </td></tr>`;
+        return;
+      }
+
+      const tipoLabels = { historico: 'Histórico', classe: 'Classe', ambos: 'Ambos' };
+
+      document.getElementById('tableBody').innerHTML = filtered.map(d => `
+        <tr>
+          <td class="texto-col">${d.texto}</td>
+          <td><span class="tipo-badge ${d.tipo}">${tipoLabels[d.tipo] || d.tipo}</span></td>
+          <td style="text-align:right">
+            <button class="delete-btn" onclick="deleteDescricao('${d.id}')">✕ remover</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ADD
+    async function addDescricao() {
+      const texto = document.getElementById('inputTexto').value.trim().toUpperCase();
+      const tipo = document.getElementById('inputTipo').value;
+
+      if (!texto) { showToast('Digite o texto', 'error'); return; }
+
+      const existe = allDescricoes.find(d => d.texto === texto && d.tipo === tipo);
+      if (existe) { showToast('Já cadastrado!', 'error'); return; }
+
+      const { error } = await _supabase.from('descricoes').insert({ texto, tipo });
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+
+      document.getElementById('inputTexto').value = '';
+      document.getElementById('inputTexto').focus();
+      await loadDescricoes();
+      showToast('Descrição adicionada!', 'success');
+    }
+
+    // DELETE
+    async function deleteDescricao(id) {
+      if (!confirm('Remover esta descrição?')) return;
+      await _supabase.from('descricoes').delete().eq('id', id);
+      await loadDescricoes();
+      showToast('Removido!', 'success');
+    }
+
+    // FILTER
+    function filterBy(tipo, el) {
+      currentFilter = tipo;
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      renderTable();
+    }
+
+    // TOAST
+    let toastTimeout;
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+      toast.className = `toast show ${type}`;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // INIT
+    async function init() {
+      const { data } = await _supabase.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+      await loadDescricoes();
+    }
+
+    init();
+  </script>
+</body>
+</html>
