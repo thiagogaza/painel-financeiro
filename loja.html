@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loja — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE;
+      --card: #FFFFFF;
+      --text: #1A1A1A;
+      --text2: #6B6B6B;
+      --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.07);
+      --shadow: 0 4px 24px rgba(0,0,0,0.06);
+      --shadow-hover: 0 12px 40px rgba(0,0,0,0.12);
+      --toggle-bg: #E0DDD8;
+      --header-bg: rgba(255,255,255,0.95);
+      --input-bg: #F5F2EE;
+    }
+
+    body.dark {
+      --bg: #111214;
+      --card: #1E2024;
+      --text: #F0EDE8;
+      --text2: #888888;
+      --text3: #555555;
+      --border: rgba(255,255,255,0.06);
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+      --shadow-hover: 0 12px 40px rgba(0,0,0,0.5);
+      --toggle-bg: #2A2D32;
+      --header-bg: rgba(30,32,36,0.95);
+      --input-bg: #15171A;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: -20%; right: -10%;
+      width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(224,112,96,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* HEADER */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .header-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px;
+      font-size: 13px; color: var(--text2);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; text-decoration: none;
+    }
+
+    .back-btn:hover { border-color: var(--salmon); color: var(--salmon); }
+
+    .page-title { display: flex; align-items: center; gap: 10px; }
+
+    .page-title-icon {
+      width: 34px; height: 34px; background: var(--salmon);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .page-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .toggle-btn {
+      width: 44px; height: 24px; background: var(--toggle-bg);
+      border-radius: 12px; border: none; cursor: pointer;
+      position: relative; transition: background var(--transition);
+    }
+
+    .toggle-btn::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--salmon);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    /* MAIN */
+    main { max-width: 1100px; margin: 0 auto; padding: 36px 24px 60px; }
+
+    /* GREETING */
+    .greeting {
+      margin-bottom: 36px;
+      animation: fadeUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .greeting h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px; font-weight: 500; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .greeting h2 span { color: var(--salmon); }
+
+    .greeting p {
+      font-size: 14px; color: var(--text2); margin-top: 6px;
+      transition: color var(--transition);
+    }
+
+    /* SECTION */
+    .section { margin-bottom: 36px; animation: fadeUp 0.6s 0.1s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+    .section-label {
+      font-size: 11px; font-weight: 600; color: var(--text3);
+      letter-spacing: 0.12em; text-transform: uppercase;
+      margin-bottom: 14px; transition: color var(--transition);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+      transition: background var(--transition);
+    }
+
+    /* GRID */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 768px) { .menu-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .menu-grid { grid-template-columns: 1fr; } }
+
+    .menu-grid.two-col { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 480px) { .menu-grid.two-col { grid-template-columns: 1fr; } }
+
+    /* MENU CARD */
+    .menu-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 16px;
+      position: relative; overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow);
+    }
+
+    .menu-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform 0.3s ease;
+    }
+
+    .menu-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--accent-light);
+    }
+
+    .menu-card:hover::before { transform: scaleY(1); }
+
+    .menu-card-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      background: var(--accent-bg);
+      transition: transform 0.3s;
+    }
+
+    .menu-card:hover .menu-card-icon { transform: scale(1.1); }
+
+    .menu-card-info { flex: 1; min-width: 0; }
+
+    .menu-card-name {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      margin-bottom: 3px; transition: color var(--transition);
+    }
+
+    .menu-card-desc {
+      font-size: 12px; color: var(--text3); line-height: 1.4;
+      transition: color var(--transition);
+    }
+
+    .menu-card-arrow {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--input-bg); flex-shrink: 0;
+      transition: all 0.3s;
+    }
+
+    .menu-card:hover .menu-card-arrow { background: var(--accent); }
+    .menu-card-arrow svg { width: 12px; height: 12px; color: var(--text3); transition: color 0.3s; }
+    .menu-card:hover .menu-card-arrow svg { color: white; }
+
+    /* ACCENT COLORS */
+    .accent-salmon { --accent: #E07060; --accent-light: rgba(224,112,96,0.3); --accent-bg: rgba(224,112,96,0.1); }
+    .accent-cyan    { --accent: #5BC8D4; --accent-light: rgba(91,200,212,0.3);  --accent-bg: rgba(91,200,212,0.1); }
+    .accent-purple  { --accent: #A78BFA; --accent-light: rgba(167,139,250,0.3); --accent-bg: rgba(167,139,250,0.1); }
+    .accent-green   { --accent: #34D399; --accent-light: rgba(52,211,153,0.3);  --accent-bg: rgba(52,211,153,0.1); }
+    .accent-orange  { --accent: #FB923C; --accent-light: rgba(251,146,60,0.3);  --accent-bg: rgba(251,146,60,0.1); }
+    .accent-blue    { --accent: #60A5FA; --accent-light: rgba(96,165,250,0.3);  --accent-bg: rgba(96,165,250,0.1); }
+    .accent-pink    { --accent: #F472B6; --accent-light: rgba(244,114,182,0.3); --accent-bg: rgba(244,114,182,0.1); }
+    .accent-yellow  { --accent: #FBBF24; --accent-light: rgba(251,191,36,0.3);  --accent-bg: rgba(251,191,36,0.1); }
+    .accent-gray    { --accent: #9CA3AF; --accent-light: rgba(156,163,175,0.3); --accent-bg: rgba(156,163,175,0.1); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">🏪</div>
+          <h1>Loja</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()" aria-label="Alternar tema"></button>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="greeting">
+      <h2>Gerencial da <span>Loja</span></h2>
+      <p>Selecione o módulo que deseja acessar</p>
+    </div>
+
+    <!-- LANÇAMENTOS -->
+    <div class="section">
+      <div class="section-label">Lançamentos</div>
+      <div class="menu-grid">
+
+        <a href="caixa.html" class="menu-card accent-salmon">
+          <div class="menu-card-icon">💰</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Caixa</div>
+            <div class="menu-card-desc">Movimentação diária do caixa físico</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="custos.html" class="menu-card accent-orange">
+          <div class="menu-card-icon">📦</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Custos</div>
+            <div class="menu-card-desc">Produtos vendidos, margens e brindes</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="vendas.html" class="menu-card accent-green">
+          <div class="menu-card-icon">🛍️</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Vendas</div>
+            <div class="menu-card-desc">Formas de recebimento por data</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="servicos.html" class="menu-card accent-cyan">
+          <div class="menu-card-icon">🔧</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Serviços</div>
+            <div class="menu-card-desc">Ordens de serviço e recebimentos</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="compras.html" class="menu-card accent-blue">
+          <div class="menu-card-icon">🛒</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Compras</div>
+            <div class="menu-card-desc">Fornecedores e formas de pagamento</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="cartao.html" class="menu-card accent-pink">
+          <div class="menu-card-icon">💳</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Cartão de Crédito</div>
+            <div class="menu-card-desc">Gastos da loja e pessoais no cartão</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- EXTRATOS -->
+    <div class="section">
+      <div class="section-label">Extratos Bancários</div>
+      <div class="menu-grid two-col">
+
+        <a href="extrato-pj.html" class="menu-card accent-purple">
+          <div class="menu-card-icon">🏦</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Extrato PJ</div>
+            <div class="menu-card-desc">Conta bancária pessoa jurídica</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="extrato-pf.html" class="menu-card accent-blue">
+          <div class="menu-card-icon">🏧</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Extrato PF</div>
+            <div class="menu-card-desc">Conta bancária pessoa física</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- CONTROLES -->
+    <div class="section">
+      <div class="section-label">Controles</div>
+      <div class="menu-grid two-col">
+
+        <a href="emprestimos.html" class="menu-card accent-yellow">
+          <div class="menu-card-icon">💸</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Empréstimos</div>
+            <div class="menu-card-desc">Parcelas, datas e baixa automática</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="garantia.html" class="menu-card accent-green">
+          <div class="menu-card-icon">🛡️</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Garantia</div>
+            <div class="menu-card-desc">Garantias, brindes e uso interno</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- CONFIGURAÇÕES -->
+    <div class="section">
+      <div class="section-label">Configurações</div>
+      <div class="menu-grid">
+
+        <a href="classes.html" class="menu-card accent-gray">
+          <div class="menu-card-icon">🏷️</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Classes</div>
+            <div class="menu-card-desc">Categorias para classificar lançamentos</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="produtos.html" class="menu-card accent-gray">
+          <div class="menu-card-icon">📱</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Produtos</div>
+            <div class="menu-card-desc">Cadastro de produtos recorrentes</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+        <a href="descricoes.html" class="menu-card accent-gray">
+          <div class="menu-card-icon">📝</div>
+          <div class="menu-card-info">
+            <div class="menu-card-name">Descrições</div>
+            <div class="menu-card-desc">Textos frequentes para autocomplete</div>
+          </div>
+          <div class="menu-card-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    // Check auth
+    _supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) window.location.href = 'index.html';
+    });
+
+    // Theme
+    let manualOverride = false;
+
+    function getSunsetHour() {
+      const month = new Date().getMonth();
+      if (month >= 10 || month <= 2) return 19;
+      if (month >= 4 && month <= 7) return 17;
+      return 18;
+    }
+
+    function getAutoTheme() {
+      const hour = new Date().getHours();
+      return (hour >= getSunsetHour() || hour < 6) ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.remove('light', 'dark');
+      document.body.classList.add(theme);
+    }
+
+    function toggleTheme() {
+      manualOverride = true;
+      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+  </script>
+</body>
+</html>
