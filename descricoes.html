@@ -256,14 +256,51 @@
     .tipo-badge.classe { background: rgba(91,200,212,0.1); color: var(--cyan); }
     .tipo-badge.ambos { background: rgba(52,211,153,0.1); color: var(--green); }
 
-    .delete-btn {
+    .action-btn {
       background: none; border: none; cursor: pointer;
-      color: var(--text3); padding: 4px 8px; border-radius: 6px;
-      transition: all 0.2s; opacity: 0; font-size: 13px;
+      padding: 4px 8px; border-radius: 6px;
+      transition: all 0.2s; opacity: 0; font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
     }
 
-    tbody tr:hover .delete-btn { opacity: 1; }
+    tbody tr:hover .action-btn { opacity: 1; }
+
+    .edit-btn { color: var(--cyan); }
+    .edit-btn:hover { background: rgba(91,200,212,0.1); }
+
+    .delete-btn { color: var(--text3); }
     .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
+
+    .actions-cell { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+
+    /* EDIT ROW */
+    .edit-input {
+      background: var(--input-bg); border: 1.5px solid var(--cyan);
+      border-radius: 8px; padding: 6px 10px;
+      font-size: 13px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none; width: 100%;
+    }
+
+    .edit-select {
+      background: var(--input-bg); border: 1.5px solid var(--cyan);
+      border-radius: 8px; padding: 6px 10px;
+      font-size: 13px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none; cursor: pointer;
+    }
+
+    .save-btn {
+      background: var(--cyan); color: white;
+      border: none; border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; white-space: nowrap;
+    }
+
+    .cancel-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; cursor: pointer; color: var(--text2);
+      font-family: 'DM Sans', sans-serif;
+    }
 
     .empty-state {
       text-align: center; padding: 48px 20px; color: var(--text3);
@@ -464,14 +501,51 @@
       const tipoLabels = { historico: 'Histórico', classe: 'Classe', ambos: 'Ambos' };
 
       document.getElementById('tableBody').innerHTML = filtered.map(d => `
-        <tr>
+        <tr id="row-${d.id}">
           <td class="texto-col">${d.texto}</td>
           <td><span class="tipo-badge ${d.tipo}">${tipoLabels[d.tipo] || d.tipo}</span></td>
-          <td style="text-align:right">
-            <button class="delete-btn" onclick="deleteDescricao('${d.id}')">✕ remover</button>
+          <td>
+            <div class="actions-cell">
+              <button class="action-btn edit-btn" onclick="startEdit('${d.id}', '${d.texto}', '${d.tipo}')">✏️ editar</button>
+              <button class="action-btn delete-btn" onclick="deleteDescricao('${d.id}')">✕ remover</button>
+            </div>
           </td>
         </tr>
       `).join('');
+    }
+
+    // START EDIT
+    function startEdit(id, texto, tipo) {
+      const tipoOptions = ['historico', 'classe', 'ambos'].map(t =>
+        `<option value="${t}" ${t === tipo ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+      ).join('');
+
+      document.getElementById(`row-${id}`).innerHTML = `
+        <td><input class="edit-input" id="edit-texto-${id}" value="${texto}" onkeydown="if(event.key==='Enter') saveEdit('${id}')" /></td>
+        <td><select class="edit-select" id="edit-tipo-${id}">${tipoOptions}</select></td>
+        <td>
+          <div class="actions-cell">
+            <button class="save-btn" onclick="saveEdit('${id}')">✓ salvar</button>
+            <button class="cancel-btn" onclick="renderTable()">cancelar</button>
+          </div>
+        </td>
+      `;
+      document.getElementById(`edit-texto-${id}`).focus();
+    }
+
+    // SAVE EDIT
+    async function saveEdit(id) {
+      const texto = document.getElementById(`edit-texto-${id}`).value.trim().toUpperCase();
+      const tipo = document.getElementById(`edit-tipo-${id}`).value;
+
+      if (!texto) { showToast('Digite o texto', 'error'); return; }
+
+      const { error } = await _supabase.from('descricoes').update({ texto, tipo }).eq('id', id);
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+
+      await loadDescricoes();
+      showToast('Atualizado!', 'success');
     }
 
     // ADD
