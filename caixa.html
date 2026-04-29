@@ -625,7 +625,7 @@
         <div class="field-group">
           <div class="field-label">Histórico</div>
           <div class="autocomplete-wrap">
-            <input type="text" class="field-input" id="inputHistorico" placeholder="Descrição do lançamento" autocomplete="off" oninput="autocomplete('historico')" onkeydown="handleAutocompleteKey(event, 'historico')" onfocus="autocomplete('historico')" />
+            <input type="text" class="field-input" id="inputHistorico" placeholder="Descrição do lançamento" autocomplete="off" oninput="showAutocomplete('historico')" onkeydown="handleAutocompleteKey(event, 'historico')" onfocus="showAutocomplete('historico')" />
             <div class="autocomplete-list" id="autocompleteHistorico"></div>
           </div>
         </div>
@@ -633,7 +633,7 @@
         <div class="field-group">
           <div class="field-label">Classe</div>
           <div class="autocomplete-wrap">
-            <input type="text" class="field-input" id="inputClasse" placeholder="Classe" autocomplete="off" oninput="autocomplete('classe')" onkeydown="handleAutocompleteKey(event, 'classe')" onfocus="autocomplete('classe')" />
+            <input type="text" class="field-input" id="inputClasse" placeholder="Classe" autocomplete="off" oninput="showAutocomplete('classe')" onkeydown="handleAutocompleteKey(event, 'classe')" onfocus="showAutocomplete('classe')" />
             <div class="autocomplete-list" id="autocompleteClasse"></div>
           </div>
         </div>
@@ -983,10 +983,6 @@
 
       await loadLancamentos();
       showToast('Lançamento adicionado!', 'success');
-
-      // Save to autocomplete
-      saveToAutocomplete('historico', historico);
-      saveToAutocomplete('classe', classe);
     }
 
     // ─── UPDATE CONFERENCIA ──────────────────────────────────────────
@@ -1026,7 +1022,7 @@
       }
     }
 
-    function autocomplete(field) {
+    function showAutocomplete(field) {
       const input = document.getElementById(`input${field.charAt(0).toUpperCase() + field.slice(1)}`);
       const list = document.getElementById(`autocomplete${field.charAt(0).toUpperCase() + field.slice(1)}`);
       const val = input.value.toUpperCase();
@@ -1035,7 +1031,7 @@
         item.toUpperCase().includes(val) && item !== val
       ).slice(0, 8);
 
-      if (filtered.length === 0 || !document.activeElement === input) {
+      if (filtered.length === 0) {
         list.classList.remove('show');
         return;
       }
