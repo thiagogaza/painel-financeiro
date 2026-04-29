@@ -104,8 +104,7 @@
     }
 
     .logo-sub {
-      font-size: 10px; color: var(--text2); letter-spacing: 0.1em;
-      text-transform: uppercase; margin-top: 2px;
+      font-size: 11px; color: var(--text2); margin-top: 3px;
       transition: color var(--transition);
     }
 
@@ -329,6 +328,19 @@
 
     .logout-btn:hover { border-color: var(--salmon); color: var(--salmon); }
 
+    .profile-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--salmon);
+      display: flex; align-items: center; justify-content: center;
+      color: white; text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .profile-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 4px 12px rgba(224,112,96,0.35);
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -345,18 +357,20 @@
           <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
         </div>
         <div class="logo-text">
-          <span class="logo-name">Painel Financeiro</span>
-          <span class="logo-sub">Gestão & Investimentos</span>
+          <span class="logo-name">Gestão & Investimentos</span>
+          <span class="logo-sub" id="headerGreeting">Carregando...</span>
         </div>
       </div>
 
       <div class="header-right">
         <span class="clock" id="clockTime">--:--</span>
         <button class="toggle-btn" onclick="toggleTheme()" aria-label="Alternar tema"></button>
-        <div class="user-btn">
-          <div class="user-avatar" id="userAvatar">T</div>
-          <span class="user-name" id="userName">Thiago</span>
-        </div>
+        <a href="perfil.html" class="profile-btn" title="Meu perfil">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </a>
         <button class="logout-btn" onclick="handleLogout()">Sair</button>
       </div>
     </div>
@@ -454,10 +468,25 @@
       }
       const email = data.session.user.email;
       const name = email.split('@')[0];
-      const initial = name.charAt(0).toUpperCase();
-      document.getElementById('userAvatar').textContent = initial;
-      document.getElementById('userName').textContent = name;
-      document.getElementById('greetingName').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+      const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+
+      const greetingName = document.getElementById('greetingName');
+      const headerGreeting = document.getElementById('headerGreeting');
+
+      if (greetingName) greetingName.textContent = displayName;
+
+      // Update header greeting with name + date
+      function updateHeaderGreeting() {
+        const now = new Date();
+        const hour = now.getHours();
+        const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+        const date = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+        const dateFormatted = date.charAt(0).toUpperCase() + date.slice(1);
+        if (headerGreeting) headerGreeting.textContent = `${greeting}, ${displayName} · ${dateFormatted}`;
+      }
+
+      updateHeaderGreeting();
+      setInterval(updateHeaderGreeting, 60000);
     });
 
     // LOGOUT

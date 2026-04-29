@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --green: #34D399;
+      --red: #F87171;
+      --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE; --card: #FFFFFF; --card2: #FAFAFA;
+      --text: #1A1A1A; --text2: #6B6B6B; --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.08); --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --input-bg: #F5F2EE; --toggle-bg: #E0DDD8;
+      --header-bg: rgba(255,255,255,0.95);
+    }
+
+    body.dark {
+      --bg: #111214; --card: #1E2024; --card2: #23262B;
+      --text: #F0EDE8; --text2: #888888; --text3: #555555;
+      --border: rgba(255,255,255,0.07); --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --input-bg: #15171A; --toggle-bg: #2A2D32;
+      --header-bg: rgba(30,32,36,0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .header-inner {
+      max-width: 800px; margin: 0 auto;
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px;
+      font-size: 13px; color: var(--text2);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s; text-decoration: none;
+    }
+
+    .back-btn:hover { border-color: var(--salmon); color: var(--salmon); }
+
+    .page-title { display: flex; align-items: center; gap: 10px; }
+
+    .page-title-icon {
+      width: 32px; height: 32px; background: var(--salmon);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    .page-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 500; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .toggle-btn {
+      width: 44px; height: 24px; background: var(--toggle-bg);
+      border-radius: 12px; border: none; cursor: pointer;
+      position: relative; transition: background var(--transition);
+    }
+
+    .toggle-btn::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--salmon);
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    main {
+      max-width: 800px; margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    /* AVATAR */
+    .avatar-section {
+      display: flex; align-items: center; gap: 24px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+      margin-bottom: 20px; box-shadow: var(--shadow);
+      animation: fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--salmon);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 28px; font-weight: 500; color: white;
+      flex-shrink: 0;
+    }
+
+    .avatar-info { flex: 1; }
+
+    .avatar-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px; font-weight: 500; color: var(--text);
+      margin-bottom: 4px; transition: color var(--transition);
+    }
+
+    .avatar-email {
+      font-size: 13px; color: var(--text2);
+      transition: color var(--transition);
+    }
+
+    .avatar-badge {
+      background: rgba(224,112,96,0.1); color: var(--salmon);
+      border-radius: 20px; padding: 4px 12px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    }
+
+    /* SECTION CARD */
+    .section-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+      margin-bottom: 20px; box-shadow: var(--shadow);
+      transition: background var(--transition), border-color var(--transition);
+      animation: fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+    }
+
+    .section-card:nth-child(2) { animation-delay: 0.1s; }
+    .section-card:nth-child(3) { animation-delay: 0.2s; }
+
+    .section-card-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      transition: border-color var(--transition);
+    }
+
+    .section-card-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .section-card-icon.blue { background: rgba(91,200,212,0.1); }
+    .section-card-icon.red { background: rgba(248,113,113,0.1); }
+
+    .section-card-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      transition: color var(--transition);
+    }
+
+    .section-card-desc {
+      font-size: 12px; color: var(--text3); margin-top: 2px;
+      transition: color var(--transition);
+    }
+
+    /* FORM */
+    .form-group { margin-bottom: 18px; }
+
+    .form-group:last-of-type { margin-bottom: 0; }
+
+    .field-label {
+      display: block; font-size: 11px; font-weight: 600;
+      color: var(--text3); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-bottom: 8px;
+      transition: color var(--transition);
+    }
+
+    .field-input {
+      width: 100%; background: var(--input-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 12px 16px;
+      font-size: 15px; font-family: 'DM Sans', sans-serif;
+      color: var(--text); outline: none;
+      transition: border-color 0.2s, background var(--transition), color var(--transition);
+    }
+
+    .field-input:focus { border-color: var(--salmon); }
+    .field-input::placeholder { color: var(--text3); }
+    .field-input:disabled {
+      opacity: 0.5; cursor: not-allowed;
+    }
+
+    .field-hint {
+      font-size: 11px; color: var(--text3); margin-top: 6px;
+      transition: color var(--transition);
+    }
+
+    /* PASSWORD WRAP */
+    .password-wrap { position: relative; }
+
+    .password-wrap .field-input { padding-right: 44px; }
+
+    .eye-btn {
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--text3); padding: 0;
+      display: flex; align-items: center; transition: color 0.2s;
+    }
+
+    .eye-btn:hover { color: var(--text2); }
+
+    /* SAVE BTN */
+    .btn-save {
+      margin-top: 20px; width: 100%;
+      background: var(--salmon); color: white;
+      border: none; border-radius: 12px;
+      padding: 13px; font-size: 15px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+
+    .btn-save:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(224,112,96,0.3);
+    }
+
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* MSG */
+    .msg {
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; margin-top: 14px; display: none;
+    }
+
+    .msg.success {
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.3);
+      color: var(--green);
+    }
+
+    .msg.error {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      color: var(--red);
+    }
+
+    /* PASSWORD STRENGTH */
+    .strength-bar {
+      height: 3px; border-radius: 2px;
+      background: var(--border); margin-top: 8px;
+      overflow: hidden; transition: background var(--transition);
+    }
+
+    .strength-fill {
+      height: 100%; border-radius: 2px;
+      width: 0%; transition: width 0.3s, background 0.3s;
+    }
+
+    .strength-text {
+      font-size: 11px; color: var(--text3);
+      margin-top: 4px; transition: color var(--transition);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">👤</div>
+          <h1>Meu Perfil</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- AVATAR -->
+    <div class="avatar-section">
+      <div class="avatar" id="avatarCircle">T</div>
+      <div class="avatar-info">
+        <div class="avatar-name" id="avatarName">Carregando...</div>
+        <div class="avatar-email" id="avatarEmail">—</div>
+      </div>
+      <span class="avatar-badge">Administrador</span>
+    </div>
+
+    <!-- NOME DE EXIBIÇÃO -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <div class="section-card-icon blue">✏️</div>
+        <div>
+          <div class="section-card-title">Nome de exibição</div>
+          <div class="section-card-desc">Como seu nome aparece no sistema</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label">Nome de exibição</label>
+        <input type="text" class="field-input" id="inputNome" placeholder="Ex: Gaza" />
+        <div class="field-hint">Este nome aparece na saudação do dashboard</div>
+      </div>
+
+      <button class="btn-save" onclick="saveNome()" id="btnNome">
+        Salvar nome
+      </button>
+      <div class="msg" id="msgNome"></div>
+    </div>
+
+    <!-- SENHA -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <div class="section-card-icon red">🔒</div>
+        <div>
+          <div class="section-card-title">Alterar senha</div>
+          <div class="section-card-desc">Mínimo de 6 caracteres</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label">Nova senha</label>
+        <div class="password-wrap">
+          <input type="password" class="field-input" id="inputSenha" placeholder="Digite a nova senha" oninput="checkStrength()" />
+          <button class="eye-btn" onclick="togglePass('inputSenha', 'eye1')" type="button">
+            <svg id="eye1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <div class="strength-text" id="strengthText"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label">Confirmar nova senha</label>
+        <div class="password-wrap">
+          <input type="password" class="field-input" id="inputSenhaConfirm" placeholder="Repita a nova senha" />
+          <button class="eye-btn" onclick="togglePass('inputSenhaConfirm', 'eye2')" type="button">
+            <svg id="eye2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveSenha()" id="btnSenha">
+        Alterar senha
+      </button>
+      <div class="msg" id="msgSenha"></div>
+    </div>
+
+  </main>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    let currentUser = null;
+
+    // THEME
+    let manualOverride = false;
+
+    function getSunsetHour() {
+      const month = new Date().getMonth();
+      if (month >= 10 || month <= 2) return 19;
+      if (month >= 4 && month <= 7) return 17;
+      return 18;
+    }
+
+    function getAutoTheme() {
+      const hour = new Date().getHours();
+      return (hour >= getSunsetHour() || hour < 6) ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.remove('light', 'dark');
+      document.body.classList.add(theme);
+    }
+
+    function toggleTheme() {
+      manualOverride = true;
+      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+
+    // TOGGLE PASSWORD
+    function togglePass(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+      } else {
+        input.type = 'password';
+        icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+      }
+    }
+
+    // PASSWORD STRENGTH
+    function checkStrength() {
+      const val = document.getElementById('inputSenha').value;
+      const fill = document.getElementById('strengthFill');
+      const text = document.getElementById('strengthText');
+
+      if (!val) { fill.style.width = '0%'; text.textContent = ''; return; }
+
+      let score = 0;
+      if (val.length >= 6) score++;
+      if (val.length >= 10) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const levels = [
+        { w: '20%', c: '#F87171', t: 'Muito fraca' },
+        { w: '40%', c: '#FB923C', t: 'Fraca' },
+        { w: '60%', c: '#FBBF24', t: 'Média' },
+        { w: '80%', c: '#34D399', t: 'Forte' },
+        { w: '100%', c: '#10B981', t: 'Muito forte' },
+      ];
+
+      const level = levels[Math.min(score - 1, 4)] || levels[0];
+      fill.style.width = level.w;
+      fill.style.background = level.c;
+      text.textContent = level.t;
+      text.style.color = level.c;
+    }
+
+    // SHOW MSG
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = (type === 'success' ? '✓ ' : '✕ ') + text;
+      el.className = `msg ${type}`;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 4000);
+    }
+
+    // LOAD USER
+    async function loadUser() {
+      const { data } = await _supabase.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+
+      currentUser = data.session.user;
+      const email = currentUser.email;
+      const meta = currentUser.user_metadata || {};
+      const displayName = meta.display_name || email.split('@')[0];
+      const initial = displayName.charAt(0).toUpperCase();
+
+      document.getElementById('avatarCircle').textContent = initial;
+      document.getElementById('avatarName').textContent = displayName;
+      document.getElementById('avatarEmail').textContent = email;
+      document.getElementById('inputNome').value = displayName;
+    }
+
+    // SAVE NOME
+    async function saveNome() {
+      const nome = document.getElementById('inputNome').value.trim();
+      if (!nome) { showMsg('msgNome', 'Digite um nome', 'error'); return; }
+
+      const btn = document.getElementById('btnNome');
+      btn.disabled = true; btn.textContent = 'Salvando...';
+
+      const { error } = await _supabase.auth.updateUser({
+        data: { display_name: nome }
+      });
+
+      btn.disabled = false; btn.textContent = 'Salvar nome';
+
+      if (error) {
+        showMsg('msgNome', 'Erro ao salvar nome', 'error');
+      } else {
+        document.getElementById('avatarName').textContent = nome;
+        document.getElementById('avatarCircle').textContent = nome.charAt(0).toUpperCase();
+        showMsg('msgNome', 'Nome atualizado com sucesso!', 'success');
+      }
+    }
+
+    // SAVE SENHA
+    async function saveSenha() {
+      const senha = document.getElementById('inputSenha').value;
+      const confirm = document.getElementById('inputSenhaConfirm').value;
+
+      if (!senha) { showMsg('msgSenha', 'Digite a nova senha', 'error'); return; }
+      if (senha.length < 6) { showMsg('msgSenha', 'Senha precisa ter no mínimo 6 caracteres', 'error'); return; }
+      if (senha !== confirm) { showMsg('msgSenha', 'As senhas não conferem', 'error'); return; }
+
+      const btn = document.getElementById('btnSenha');
+      btn.disabled = true; btn.textContent = 'Alterando...';
+
+      const { error } = await _supabase.auth.updateUser({ password: senha });
+
+      btn.disabled = false; btn.textContent = 'Alterar senha';
+
+      if (error) {
+        showMsg('msgSenha', 'Erro ao alterar senha', 'error');
+      } else {
+        document.getElementById('inputSenha').value = '';
+        document.getElementById('inputSenhaConfirm').value = '';
+        document.getElementById('strengthFill').style.width = '0%';
+        document.getElementById('strengthText').textContent = '';
+        showMsg('msgSenha', 'Senha alterada com sucesso!', 'success');
+      }
+    }
+
+    loadUser();
+  </script>
+</body>
+</html>
