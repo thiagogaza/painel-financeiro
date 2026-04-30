@@ -132,6 +132,15 @@
     tbody tr:hover .delete-btn { opacity: 1; }
     .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
 
+    .edit-btn { background: none; border: none; cursor: pointer; color: var(--text3); padding: 4px; border-radius: 4px; transition: all 0.2s; opacity: 0; font-size: 13px; }
+    tbody tr:hover .edit-btn { opacity: 1; }
+    .edit-btn:hover { color: var(--cyan); background: rgba(91,200,212,0.1); }
+
+    .edit-input { background: var(--input-bg); border: 1.5px solid var(--cyan); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; width: 100%; }
+    .edit-select { background: var(--input-bg); border: 1.5px solid var(--cyan); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; cursor: pointer; }
+    .save-btn { background: var(--cyan); color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .cancel-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text2); font-family: 'DM Sans', sans-serif; }
+
     .table-footer { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 20px; border-top: 2px solid var(--border); background: var(--card2); transition: all var(--transition); }
     .footer-item { display: flex; align-items: center; gap: 8px; }
     .footer-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
@@ -409,16 +418,19 @@
         const obsClass = obsMap[row.obs] || '';
 
         html += `
-          <tr class="${isDayChange ? 'day-separator' : ''}">
+          <tr class="${isDayChange ? 'day-separator' : ''}" id="row-${row.id}">
             <td class="data-col">${dateDisplay}</td>
             <td class="produto-col">${row.produto || ''}</td>
             <td class="venda-col">${v > 0 ? formatBRL(v) : '-'}</td>
             <td class="custo-col">${c > 0 ? formatBRL(c) : '-'}</td>
             <td class="margem-col ${neg ? 'margem-neg' : 'margem-pos'}">${pct}</td>
             <td class="obs-col">${row.obs ? `<span class="obs-badge ${obsClass}">${row.obs}</span>` : ''}</td>
-            <td><button class="delete-btn" onclick="deleteCusto('${row.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            </button></td>
+            <td style="text-align:right">
+              <button class="edit-btn" onclick="startEditCusto('${row.id}', '${dateDisplay}', '${row.produto}', '${row.preco_venda || ''}', '${row.preco_custo || ''}', '${row.obs || ''}')">✏️</button>
+              <button class="delete-btn" onclick="deleteCusto('${row.id}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </td>
           </tr>`;
       });
 
@@ -484,6 +496,52 @@
 
       await loadCustos();
       showToast('Lançamento adicionado!', 'success');
+    }
+
+    // EDIT
+    function startEditCusto(id, dataDisplay, produto, venda, custo, obs) {
+      const obsOptions = ['', 'BRINDE', 'SUCATA', 'USO INTERNO'].map(o =>
+        `<option value="${o}" ${o === obs ? 'selected' : ''}>${o || '— Nenhuma —'}</option>`
+      ).join('');
+
+      document.getElementById(`row-${id}`).innerHTML = `
+        <td><input class="edit-input" id="ed-data-${id}" value="${dataDisplay}" style="width:70px" /></td>
+        <td><input class="edit-input" id="ed-produto-${id}" value="${produto}" /></td>
+        <td><input class="edit-input" id="ed-venda-${id}" type="number" value="${venda}" style="width:90px" /></td>
+        <td><input class="edit-input" id="ed-custo-${id}" type="number" value="${custo}" style="width:90px" /></td>
+        <td>—</td>
+        <td><select class="edit-select" id="ed-obs-${id}">${obsOptions}</select></td>
+        <td style="text-align:right">
+          <button class="save-btn" onclick="saveEditCusto('${id}')">✓ salvar</button>
+          <button class="cancel-btn" onclick="loadCustos()">cancelar</button>
+        </td>`;
+      document.getElementById(`ed-produto-${id}`).focus();
+    }
+
+    async function saveEditCusto(id) {
+      const dataRaw = document.getElementById(`ed-data-${id}`).value.trim();
+      const produto = document.getElementById(`ed-produto-${id}`).value.trim().toUpperCase();
+      const venda = parseFloat(document.getElementById(`ed-venda-${id}`).value) || null;
+      const custo = parseFloat(document.getElementById(`ed-custo-${id}`).value) || null;
+      const obs = document.getElementById(`ed-obs-${id}`).value;
+
+      if (!dataRaw || !produto) { showToast('Preencha data e produto', 'error'); return; }
+
+      const parts = dataRaw.split('/');
+      let dataRef = '';
+      if (parts.length === 2) {
+        dataRef = `${currentYear}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      } else if (parts.length === 3) {
+        dataRef = `20${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      }
+
+      const { error } = await _supabase.from('custos').update({
+        data_ref: dataRef, produto, preco_venda: venda, preco_custo: custo, obs: obs || null
+      }).eq('id', id);
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+      await loadCustos();
+      showToast('Atualizado!', 'success');
     }
 
     // DELETE
