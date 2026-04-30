@@ -441,12 +441,16 @@
 
     .conf-input:focus { border-color: var(--salmon); }
 
-    .delete-btn {
+    .edit-btn {
       background: none; border: none; cursor: pointer;
       color: var(--text3); padding: 4px; border-radius: 4px;
-      transition: color 0.2s, background 0.2s;
-      opacity: 0;
+      font-size: 13px; transition: all 0.2s; opacity: 0;
     }
+    tbody tr:hover .edit-btn { opacity: 1; }
+    .edit-btn:hover { color: var(--cyan); background: rgba(91,200,212,0.1); }
+    .edit-input-inline { background: var(--input-bg); border: 1.5px solid var(--cyan); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; }
+    .save-inline-btn { background: var(--cyan); color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .cancel-inline-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text2); font-family: 'DM Sans', sans-serif; }
 
     tbody tr:hover .delete-btn { opacity: 1; }
     .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
@@ -902,7 +906,7 @@
         lastData = row.data;
 
         html += `
-          <tr class="${isDayChange ? 'day-separator' : ''}">
+          <tr class="${isDayChange ? 'day-separator' : ''}" id="row-${row.id}">
             <td class="data-col">${formatDate(row.data)}</td>
             <td class="historico-col">${row.historico || ''}</td>
             <td class="classe-col"><span class="classe-tag">${row.classe || ''}</span></td>
@@ -917,7 +921,8 @@
                 : ''
               }
             </td>
-            <td>
+            <td style="text-align:right; white-space:nowrap">
+              <button class="edit-btn" onclick="startEditLancamento('${row.id}', '${row.data}', '${(row.historico||'').replace(/'/g,"\\'")}', '${(row.classe||'').replace(/'/g,"\\'")}', '${row.credito||''}', '${row.debito||''}')" title="Editar">✏️</button>
               <button class="delete-btn" onclick="deleteLancamento('${row.id}')" title="Excluir">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
@@ -983,6 +988,50 @@
 
       await loadLancamentos();
       showToast('Lançamento adicionado!', 'success');
+    }
+
+    // ─── EDIT LANCAMENTO ─────────────────────────────────────────────
+    function startEditLancamento(id, data, historico, classe, credito, debito) {
+      const dataFormatted = formatDate(data);
+      document.getElementById(`row-${id}`).innerHTML = `
+        <td><input class="edit-input-inline" id="ee-data-${id}" value="${dataFormatted}" style="width:70px" /></td>
+        <td><input class="edit-input-inline" id="ee-hist-${id}" value="${historico}" style="width:100%" /></td>
+        <td><input class="edit-input-inline" id="ee-classe-${id}" value="${classe}" style="width:120px" /></td>
+        <td><input class="edit-input-inline" id="ee-cred-${id}" type="number" value="${credito}" style="width:90px" /></td>
+        <td><input class="edit-input-inline" id="ee-deb-${id}" type="number" value="${debito}" style="width:90px" /></td>
+        <td>—</td>
+        <td></td>
+        <td style="text-align:right; white-space:nowrap">
+          <button class="save-inline-btn" onclick="saveEditLancamento('${id}', '${data}')">✓ salvar</button>
+          <button class="cancel-inline-btn" onclick="loadLancamentos()">cancelar</button>
+        </td>`;
+      document.getElementById(`ee-hist-${id}`).focus();
+    }
+
+    async function saveEditLancamento(id, dataOriginal) {
+      const dataRaw = document.getElementById(`ee-data-${id}`).value.trim();
+      const historico = document.getElementById(`ee-hist-${id}`).value.trim().toUpperCase();
+      const classe = document.getElementById(`ee-classe-${id}`).value.trim().toUpperCase();
+      const credito = parseFloat(document.getElementById(`ee-cred-${id}`).value) || null;
+      const debito = parseFloat(document.getElementById(`ee-deb-${id}`).value) || null;
+
+      if (!dataRaw || !historico) { showToast('Preencha data e histórico', 'error'); return; }
+
+      // Convert DD/MM/YY to YYYY-MM-DD
+      const parts = dataRaw.split('/');
+      let dataFinal = dataOriginal;
+      if (parts.length === 3) {
+        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        dataFinal = `${year}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      }
+
+      const { error } = await _supabase.from('extrato_pj').update({
+        data: dataFinal, historico, classe, credito, debito
+      }).eq('id', id);
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+      await loadLancamentos();
+      showToast('Atualizado!', 'success');
     }
 
     // ─── UPDATE CONFERENCIA ──────────────────────────────────────────
