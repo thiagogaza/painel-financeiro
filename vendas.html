@@ -302,6 +302,7 @@
               <th>120d</th>
               <th class="total-col">Total Dia</th>
               <th class="acum-col">T. Acumulado</th>
+              <th style="text-align:center">Diferença</th>
               <th></th>
             </tr>
           </thead>
@@ -333,6 +334,7 @@
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
     let vendas = [];
+    let custosPorDia = {};
 
     // THEME
     let manualOverride = false;
@@ -384,12 +386,20 @@
       const lastDay = new Date(currentYear, currentMonth, 0).getDate();
       const end = `${currentYear}-${pad(currentMonth)}-${lastDay}`;
 
-      const { data } = await _supabase.from('vendas').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at');
-      vendas = data || [];
+      const [{ data: vendasData }, { data: custosData }] = await Promise.all([
+        _supabase.from('vendas').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at'),
+        _supabase.from('custos').select('data_ref, preco_venda').gte('data_ref', start).lte('data_ref', end)
+      ]);
 
-      // Load custos total for comparison
-      const { data: custos } = await _supabase.from('custos').select('preco_venda').gte('data_ref', start).lte('data_ref', end);
-      const totalCustos = custos ? custos.reduce((s, r) => s + (parseFloat(r.preco_venda) || 0), 0) : 0;
+      vendas = vendasData || [];
+
+      // Group custos by day
+      custosPorDia = {};
+      (custosData || []).forEach(r => {
+        custosPorDia[r.data_ref] = (custosPorDia[r.data_ref] || 0) + (parseFloat(r.preco_venda) || 0);
+      });
+
+      const totalCustos = Object.values(custosPorDia).reduce((s, v) => s + v, 0);
 
       renderTable();
       updateSummary(totalCustos);
@@ -413,11 +423,21 @@
         const total = vals.reduce((s, v) => s + v, 0);
         acumulado += total;
 
+        const totalCustoDia = custosPorDia[row.data_ref] || 0;
+        const diff = totalCustoDia - total;
+        const diffOk = Math.abs(diff) < 0.01;
+        const diffHtml = totalCustoDia === 0
+          ? '<span style="color:var(--text3)">—</span>'
+          : diffOk
+            ? '<span style="color:var(--green);font-weight:600">✓</span>'
+            : `<span style="color:var(--orange);font-size:11px;font-weight:600">falta ${formatBRL(Math.abs(diff))}</span>`;
+
         html += `<tr id="row-${row.id}">
           <td>${formatDateDisplay(row.data_ref)}</td>
           ${vals.map(v => `<td class="val-col">${fmtVal(v)}</td>`).join('')}
           <td class="total-col">${formatBRL(total)}</td>
           <td class="acum-col">${formatBRL(acumulado)}</td>
+          <td style="text-align:center">${diffHtml}</td>
           <td style="white-space:nowrap">
             <button class="action-btn edit" onclick="startEditVenda('${row.id}')" title="Editar">✏️</button>
             <button class="action-btn del" onclick="deleteVenda('${row.id}')" title="Excluir">✕</button>
@@ -476,6 +496,7 @@
       document.getElementById(`row-${id}`).innerHTML = `
         <td><input class="edit-input-sm" id="ev-data-${id}" value="${formatDateDisplay(row.data_ref)}" style="width:65px" /></td>
         ${PRAZOS.map((p, i) => `<td><input class="edit-input-sm" id="ev-${p}-${id}" type="number" value="${vals[i]}" style="width:70px" /></td>`).join('')}
+        <td>—</td>
         <td>—</td>
         <td>—</td>
         <td style="white-space:nowrap">
