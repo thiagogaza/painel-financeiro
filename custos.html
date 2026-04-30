@@ -371,9 +371,11 @@
     async function loadCustos() {
       const pad = n => String(n).padStart(2, '0');
       const start = `${currentYear}-${pad(currentMonth)}-01`;
-      const end = `${currentYear}-${pad(currentMonth)}-31`;
+      const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+      const end = `${currentYear}-${pad(currentMonth)}-${lastDay}`;
 
-      const { data } = await _supabase.from('custos').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at');
+      const { data, error } = await _supabase.from('custos').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at');
+      console.log('Custos loaded:', data, 'Error:', error);
       custos = data || [];
       renderTable();
       updateSummary();
