@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custos — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --green: #34D399;
+      --red: #F87171;
+      --orange: #FB923C;
+      --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE; --card: #FFFFFF; --card2: #FAFAFA;
+      --text: #1A1A1A; --text2: #6B6B6B; --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.04);
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --input-bg: #F5F2EE; --toggle-bg: #E0DDD8;
+      --row-hover: rgba(0,0,0,0.02); --row-even: rgba(0,0,0,0.01);
+      --header-bg: rgba(255,255,255,0.95);
+    }
+
+    body.dark {
+      --bg: #111214; --card: #1E2024; --card2: #23262B;
+      --text: #F0EDE8; --text2: #888888; --text3: #555555;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.03);
+      --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --input-bg: #15171A; --toggle-bg: #2A2D32;
+      --row-hover: rgba(255,255,255,0.03); --row-even: rgba(255,255,255,0.01);
+      --header-bg: rgba(30,32,36,0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background var(--transition), color var(--transition); }
+
+    header { position: sticky; top: 0; z-index: 200; background: var(--header-bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); transition: background var(--transition), border-color var(--transition); }
+    .header-inner { max-width: 1300px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; text-decoration: none; }
+    .back-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .page-title { display: flex; align-items: center; gap: 10px; }
+    .page-title-icon { width: 32px; height: 32px; background: var(--orange); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .page-title h1 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; color: var(--text); transition: color var(--transition); }
+    .toggle-btn { width: 44px; height: 24px; background: var(--toggle-bg); border-radius: 12px; border: none; cursor: pointer; position: relative; transition: background var(--transition); }
+    .toggle-btn::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--salmon); transition: transform var(--transition), background var(--transition); }
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    .quick-nav { background: var(--header-bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); overflow-x: auto; scrollbar-width: none; transition: background var(--transition), border-color var(--transition); }
+    .quick-nav::-webkit-scrollbar { display: none; }
+    .quick-nav-inner { max-width: 1300px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 2px; }
+    .nav-link { display: flex; align-items: center; gap: 5px; padding: 8px 12px; font-size: 12px; font-weight: 500; color: var(--text2); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .nav-link:hover { color: var(--text); }
+    .nav-link.active { color: var(--orange); border-bottom-color: var(--orange); }
+    .nav-link .nav-icon { font-size: 13px; }
+    .nav-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+    main { max-width: 1300px; margin: 0 auto; padding: 24px; }
+
+    .month-nav { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); transition: background var(--transition), border-color var(--transition); }
+    .month-nav-left { display: flex; align-items: center; gap: 12px; }
+    .month-arrow { width: 32px; height: 32px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); transition: all 0.2s; }
+    .month-arrow:hover { border-color: var(--orange); color: var(--orange); }
+    .month-arrow svg { width: 14px; height: 14px; }
+    .month-display { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; color: var(--text); min-width: 180px; text-align: center; transition: color var(--transition); }
+    .month-badge { font-size: 11px; color: var(--orange); letter-spacing: 0.06em; text-transform: uppercase; background: rgba(251,146,60,0.1); border-radius: 20px; padding: 3px 10px; }
+
+    .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 768px) { .summary-cards { grid-template-columns: repeat(2, 1fr); } }
+    .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); transition: all var(--transition); }
+    .summary-card-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .summary-card-value { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 500; transition: color var(--transition); }
+    .summary-card-value.green { color: var(--green); }
+    .summary-card-value.red { color: var(--red); }
+    .summary-card-value.orange { color: var(--orange); }
+    .summary-card-value.blue { color: var(--cyan); }
+
+    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); transition: all var(--transition); }
+    .add-form-title { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .add-form-fields { display: grid; grid-template-columns: 100px 1fr 130px 130px 160px auto; gap: 8px; align-items: end; }
+    @media (max-width: 900px) { .add-form-fields { grid-template-columns: 1fr 1fr; } }
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-label { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+    .field-input { background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; width: 100%; transition: border-color 0.2s, background var(--transition), color var(--transition); }
+    .field-input:focus { border-color: var(--orange); }
+    .field-input::placeholder { color: var(--text3); }
+    select.field-input { cursor: pointer; }
+
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 300; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); max-height: 200px; overflow-y: auto; display: none; margin-top: 4px; }
+    .autocomplete-list.show { display: block; }
+    .autocomplete-item { padding: 10px 14px; font-size: 13px; color: var(--text2); cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border2); }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover, .autocomplete-item.highlighted { background: var(--orange); color: white; }
+
+    .btn-add { background: var(--orange); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: transform 0.2s, box-shadow 0.2s; white-space: nowrap; }
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(251,146,60,0.3); }
+
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); transition: all var(--transition); }
+    .table-header-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .table-header-bar h2 { font-size: 13px; font-weight: 600; color: var(--text2); }
+    .table-count { font-size: 12px; color: var(--text3); background: var(--input-bg); border-radius: 20px; padding: 3px 10px; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: var(--card2); padding: 10px 14px; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border2); transition: background 0.15s; }
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr:nth-child(even) { background: var(--row-even); }
+    tbody tr:nth-child(even):hover { background: var(--row-hover); }
+    tbody tr.day-separator { border-top: 2px solid var(--border); }
+    tbody td { padding: 10px 14px; color: var(--text2); vertical-align: middle; }
+    tbody td.data-col { color: var(--text3); font-size: 12px; white-space: nowrap; }
+    tbody td.produto-col { color: var(--text); font-weight: 500; }
+    tbody td.venda-col { color: var(--green); font-weight: 500; text-align: right; }
+    tbody td.custo-col { color: var(--red); font-weight: 500; text-align: right; }
+    tbody td.margem-col { font-weight: 600; text-align: right; font-family: 'Playfair Display', serif; }
+    tbody td.obs-col { text-align: center; }
+    .margem-pos { color: var(--green); }
+    .margem-neg { color: var(--red); }
+
+    .obs-badge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+    .obs-brinde { background: rgba(91,200,212,0.1); color: var(--cyan); }
+    .obs-sucata { background: rgba(251,146,60,0.1); color: var(--orange); }
+    .obs-uso { background: rgba(167,139,250,0.1); color: #A78BFA; }
+
+    .delete-btn { background: none; border: none; cursor: pointer; color: var(--text3); padding: 4px; border-radius: 4px; transition: all 0.2s; opacity: 0; }
+    tbody tr:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: var(--red); background: rgba(248,113,113,0.1); }
+
+    .table-footer { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 20px; border-top: 2px solid var(--border); background: var(--card2); transition: all var(--transition); }
+    .footer-item { display: flex; align-items: center; gap: 8px; }
+    .footer-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+    .footer-value { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; }
+    .footer-value.green { color: var(--green); }
+    .footer-value.red { color: var(--red); }
+    .footer-value.orange { color: var(--orange); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1000; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 13px; color: var(--text); box-shadow: var(--shadow); display: none; align-items: center; gap: 8px; }
+    .toast.show { display: flex; }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="loja.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Loja
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">📦</div>
+          <h1>Custos</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <nav class="quick-nav">
+    <div class="quick-nav-inner">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span> Dashboard</a>
+      <div class="nav-divider"></div>
+      <a href="loja.html" class="nav-link"><span class="nav-icon">🏪</span> Loja</a>
+      <div class="nav-divider"></div>
+      <a href="caixa.html" class="nav-link"><span class="nav-icon">💰</span> Caixa</a>
+      <a href="custos.html" class="nav-link active"><span class="nav-icon">📦</span> Custos</a>
+      <a href="vendas.html" class="nav-link"><span class="nav-icon">🛍️</span> Vendas</a>
+      <a href="servicos.html" class="nav-link"><span class="nav-icon">🔧</span> Serviços</a>
+      <a href="compras.html" class="nav-link"><span class="nav-icon">🛒</span> Compras</a>
+      <a href="cartao.html" class="nav-link"><span class="nav-icon">💳</span> Cartão</a>
+      <div class="nav-divider"></div>
+      <a href="extrato-pj.html" class="nav-link"><span class="nav-icon">🏦</span> Extrato PJ</a>
+      <a href="extrato-pf.html" class="nav-link"><span class="nav-icon">🏧</span> Extrato PF</a>
+      <div class="nav-divider"></div>
+      <a href="emprestimos.html" class="nav-link"><span class="nav-icon">💸</span> Empréstimos</a>
+      <a href="garantia.html" class="nav-link"><span class="nav-icon">🛡️</span> Garantia</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <div class="month-nav">
+      <div class="month-nav-left">
+        <button class="month-arrow" onclick="changeMonth(-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="month-display" id="monthDisplay">—</div>
+        <button class="month-arrow" onclick="changeMonth(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <span class="month-badge" id="monthBadge"></span>
+    </div>
+
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-label">Total Vendas</div>
+        <div class="summary-card-value green" id="totalVendas">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Total Custos</div>
+        <div class="summary-card-value red" id="totalCustos">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Margem R$</div>
+        <div class="summary-card-value orange" id="margemRS">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Margem %</div>
+        <div class="summary-card-value blue" id="margemPct">0,00%</div>
+      </div>
+    </div>
+
+    <div class="add-form">
+      <div class="add-form-title">Novo lançamento</div>
+      <div class="add-form-fields">
+        <div class="field-group">
+          <div class="field-label">Data</div>
+          <input type="text" class="field-input" id="inputData" placeholder="26/04" maxlength="5" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Produto</div>
+          <div class="autocomplete-wrap">
+            <input type="text" class="field-input" id="inputProduto" placeholder="Descrição do produto" autocomplete="off"
+              oninput="showAutocompleteCustos()"
+              onkeydown="handleAutocompleteKeyCustos(event)"
+              onfocus="showAutocompleteCustos()" />
+            <div class="autocomplete-list" id="autocompleteProduto"></div>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Preço Venda (R$)</div>
+          <input type="number" class="field-input" id="inputVenda" placeholder="0,00" step="0.01" min="0" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Preço Custo (R$)</div>
+          <input type="number" class="field-input" id="inputCusto" placeholder="0,00" step="0.01" min="0" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Observação</div>
+          <select class="field-input" id="inputObs">
+            <option value="">— Nenhuma —</option>
+            <option value="BRINDE">Brinde</option>
+            <option value="SUCATA">Sucata</option>
+            <option value="USO INTERNO">Uso Interno</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">&nbsp;</div>
+          <button class="btn-add" onclick="addCusto()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>Quadro das Vendas de Produtos</h2>
+        <span class="table-count" id="tableCount">0 registros</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Descrição do Produto Vendido</th>
+              <th style="text-align:right">Preço Venda</th>
+              <th style="text-align:right">Preço Custo</th>
+              <th style="text-align:right">Margem Bruta</th>
+              <th style="text-align:center">Obs</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="footer-item">
+          <span class="footer-label">Total Vendas</span>
+          <span class="footer-value green" id="footerVendas">R$ 0,00</span>
+        </div>
+        <div class="footer-item">
+          <span class="footer-label">Total Custos</span>
+          <span class="footer-value red" id="footerCustos">R$ 0,00</span>
+        </div>
+        <div class="footer-item">
+          <span class="footer-label">Margem Mensal</span>
+          <span class="footer-value orange" id="footerMargem">0,00%</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+    let custos = [];
+    let autocompleteData = [];
+
+    // THEME
+    let manualOverride = false;
+    function getSunsetHour() { const m = new Date().getMonth(); if (m >= 10 || m <= 2) return 19; if (m >= 4 && m <= 7) return 17; return 18; }
+    function getAutoTheme() { const h = new Date().getHours(); return (h >= getSunsetHour() || h < 6) ? 'dark' : 'light'; }
+    function applyTheme(t) { document.body.classList.remove('light','dark'); document.body.classList.add(t); }
+    function toggleTheme() { manualOverride = true; applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark'); }
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+
+    // MONTH
+    function updateMonthDisplay() {
+      const date = new Date(currentYear, currentMonth - 1, 1);
+      const name = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      document.getElementById('monthDisplay').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+      const today = new Date();
+      document.getElementById('monthBadge').textContent = (currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1) ? 'Mês atual' : '';
+    }
+
+    function changeMonth(dir) {
+      currentMonth += dir;
+      if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+      if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+      updateMonthDisplay();
+      loadCustos();
+    }
+
+    // FORMAT
+    function formatBRL(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0); }
+
+    function calcMargem(venda, custo) {
+      const v = parseFloat(venda) || 0;
+      const c = parseFloat(custo) || 0;
+      if (v === 0 && c === 0) return { pct: '—', neg: false };
+      if (v === 0) return { pct: '(100,00%)', neg: true };
+      const rs = v - c;
+      const pct = (rs / v) * 100;
+      const neg = pct < 0;
+      return { pct: neg ? `(${Math.abs(pct).toFixed(2).replace('.', ',')}%)` : `${pct.toFixed(2).replace('.', ',')}%`, neg };
+    }
+
+    // LOAD AUTOCOMPLETE
+    async function loadAutocomplete() {
+      const { data } = await _supabase.from('descricoes').select('texto, tipo').in('tipo', ['produto', 'ambos']).order('texto');
+      autocompleteData = data ? data.map(d => d.texto) : [];
+    }
+
+    // LOAD CUSTOS
+    async function loadCustos() {
+      const pad = n => String(n).padStart(2, '0');
+      const start = `${currentYear}-${pad(currentMonth)}-01`;
+      const end = `${currentYear}-${pad(currentMonth)}-31`;
+
+      const { data } = await _supabase.from('custos').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at');
+      custos = data || [];
+      renderTable();
+      updateSummary();
+    }
+
+    // RENDER
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      document.getElementById('tableCount').textContent = `${custos.length} registro${custos.length !== 1 ? 's' : ''}`;
+
+      if (custos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📦</div><p>Nenhum lançamento neste mês.</p></div></td></tr>`;
+        return;
+      }
+
+      let lastData = null;
+      let html = '';
+
+      custos.forEach(row => {
+        const { pct, neg } = calcMargem(row.preco_venda, row.preco_custo);
+        const isDayChange = lastData !== null && lastData !== row.data_ref;
+        lastData = row.data_ref;
+
+        const parts = row.data_ref ? row.data_ref.split('-') : [];
+        const dateDisplay = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0].slice(2)}` : '';
+
+        const v = parseFloat(row.preco_venda) || 0;
+        const c = parseFloat(row.preco_custo) || 0;
+
+        const obsMap = { 'BRINDE': 'obs-brinde', 'SUCATA': 'obs-sucata', 'USO INTERNO': 'obs-uso' };
+        const obsClass = obsMap[row.obs] || '';
+
+        html += `
+          <tr class="${isDayChange ? 'day-separator' : ''}">
+            <td class="data-col">${dateDisplay}</td>
+            <td class="produto-col">${row.produto || ''}</td>
+            <td class="venda-col">${v > 0 ? formatBRL(v) : '-'}</td>
+            <td class="custo-col">${c > 0 ? formatBRL(c) : '-'}</td>
+            <td class="margem-col ${neg ? 'margem-neg' : 'margem-pos'}">${pct}</td>
+            <td class="obs-col">${row.obs ? `<span class="obs-badge ${obsClass}">${row.obs}</span>` : ''}</td>
+            <td><button class="delete-btn" onclick="deleteCusto('${row.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button></td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // SUMMARY
+    function updateSummary() {
+      let tv = 0, tc = 0;
+      custos.forEach(r => { tv += parseFloat(r.preco_venda) || 0; tc += parseFloat(r.preco_custo) || 0; });
+      const mr = tv - tc;
+      const mp = tv > 0 ? (mr / tv) * 100 : 0;
+      const neg = mr < 0;
+      const pctStr = neg ? `(${Math.abs(mp).toFixed(2).replace('.', ',')}%)` : `${mp.toFixed(2).replace('.', ',')}%`;
+
+      document.getElementById('totalVendas').textContent = formatBRL(tv);
+      document.getElementById('totalCustos').textContent = formatBRL(tc);
+      document.getElementById('margemRS').textContent = formatBRL(mr);
+      document.getElementById('margemRS').className = `summary-card-value ${neg ? 'red' : 'orange'}`;
+      document.getElementById('margemPct').textContent = pctStr;
+      document.getElementById('margemPct').className = `summary-card-value ${neg ? 'red' : 'blue'}`;
+      document.getElementById('footerVendas').textContent = formatBRL(tv);
+      document.getElementById('footerCustos').textContent = formatBRL(tc);
+      document.getElementById('footerMargem').textContent = pctStr;
+      document.getElementById('footerMargem').className = `footer-value ${neg ? 'red' : 'orange'}`;
+    }
+
+    // ADD
+    async function addCusto() {
+      const dataRaw = document.getElementById('inputData').value.trim();
+      const produto = document.getElementById('inputProduto').value.trim().toUpperCase();
+      const venda = parseFloat(document.getElementById('inputVenda').value) || 0;
+      const custo = parseFloat(document.getElementById('inputCusto').value) || 0;
+      const obs = document.getElementById('inputObs').value;
+
+      if (!dataRaw) { showToast('Informe a data', 'error'); return; }
+      if (!produto) { showToast('Informe o produto', 'error'); return; }
+      if (venda === 0 && custo === 0) { showToast('Informe venda ou custo', 'error'); return; }
+
+      const parts = dataRaw.split('/');
+      let dataRef = '';
+      if (parts.length === 2) {
+        dataRef = `${currentYear}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      } else {
+        dataRef = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${dataRaw.padStart(2,'0')}`;
+      }
+
+      const { error } = await _supabase.from('custos').insert({
+        data_ref: dataRef,
+        produto,
+        preco_venda: venda || null,
+        preco_custo: custo || null,
+        obs: obs || null
+      });
+
+      if (error) { showToast('Erro ao salvar', 'error'); console.error(error); return; }
+
+      document.getElementById('inputProduto').value = '';
+      document.getElementById('inputVenda').value = '';
+      document.getElementById('inputCusto').value = '';
+      document.getElementById('inputObs').value = '';
+      document.getElementById('inputProduto').focus();
+
+      await loadCustos();
+      showToast('Lançamento adicionado!', 'success');
+    }
+
+    // DELETE
+    async function deleteCusto(id) {
+      if (!confirm('Excluir este lançamento?')) return;
+      await _supabase.from('custos').delete().eq('id', id);
+      await loadCustos();
+      showToast('Excluído!', 'success');
+    }
+
+    // AUTOCOMPLETE
+    function showAutocompleteCustos() {
+      const input = document.getElementById('inputProduto');
+      const list = document.getElementById('autocompleteProduto');
+      const val = input.value.toUpperCase();
+      const filtered = autocompleteData.filter(i => i.includes(val) && i !== val).slice(0, 8);
+      if (!filtered.length) { list.classList.remove('show'); return; }
+      list.innerHTML = filtered.map(i => `<div class="autocomplete-item" onmousedown="selectAuto('${i}')">${i}</div>`).join('');
+      list.classList.add('show');
+    }
+
+    function selectAuto(value) {
+      document.getElementById('inputProduto').value = value;
+      document.getElementById('autocompleteProduto').classList.remove('show');
+      document.getElementById('inputVenda').focus();
+    }
+
+    function handleAutocompleteKeyCustos(e) {
+      const list = document.getElementById('autocompleteProduto');
+      const items = list.querySelectorAll('.autocomplete-item');
+      const highlighted = list.querySelector('.highlighted');
+      let idx = Array.from(items).indexOf(highlighted);
+
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (highlighted) highlighted.classList.remove('highlighted'); items[(idx + 1) % items.length]?.classList.add('highlighted'); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (highlighted) highlighted.classList.remove('highlighted'); items[(idx - 1 + items.length) % items.length]?.classList.add('highlighted'); }
+      else if (e.key === 'Enter') { if (highlighted) { e.preventDefault(); selectAuto(highlighted.textContent); } else { list.classList.remove('show'); document.getElementById('inputVenda').focus(); } }
+      else if (e.key === 'Escape' || e.key === 'Tab') { list.classList.remove('show'); }
+    }
+
+    document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l => l.classList.remove('show')); });
+
+    // TOAST
+    let toastTimeout;
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+      t.className = `toast show ${type}`;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // DEFAULT DATE
+    function setDefaultDate() {
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      document.getElementById('inputData').value = `${String(y.getDate()).padStart(2,'0')}/${String(y.getMonth()+1).padStart(2,'0')}`;
+    }
+
+    // INIT
+    async function init() {
+      const { data } = await _supabase.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+      updateMonthDisplay();
+      setDefaultDate();
+      await loadAutocomplete();
+      await loadCustos();
+    }
+
+    init();
+  </script>
+</body>
+</html>
