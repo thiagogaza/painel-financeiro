@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garantia — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --salmon: #E07060;
+      --cyan: #5BC8D4;
+      --green: #34D399;
+      --red: #F87171;
+      --orange: #FB923C;
+      --purple: #A78BFA;
+      --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.light {
+      --bg: #F5F2EE; --card: #FFFFFF; --card2: #FAFAFA;
+      --text: #1A1A1A; --text2: #6B6B6B; --text3: #9A9A9A;
+      --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.04);
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --input-bg: #F5F2EE; --toggle-bg: #E0DDD8;
+      --row-hover: rgba(0,0,0,0.02); --row-even: rgba(0,0,0,0.01);
+      --header-bg: rgba(255,255,255,0.95);
+    }
+
+    body.dark {
+      --bg: #111214; --card: #1E2024; --card2: #23262B;
+      --text: #F0EDE8; --text2: #888888; --text3: #555555;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.03);
+      --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --input-bg: #15171A; --toggle-bg: #2A2D32;
+      --row-hover: rgba(255,255,255,0.03); --row-even: rgba(255,255,255,0.01);
+      --header-bg: rgba(30,32,36,0.95);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background var(--transition), color var(--transition); }
+
+    header { position: sticky; top: 0; z-index: 200; background: var(--header-bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); transition: background var(--transition), border-color var(--transition); }
+    .header-inner { max-width: 1300px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; text-decoration: none; }
+    .back-btn:hover { border-color: var(--purple); color: var(--purple); }
+    .page-title { display: flex; align-items: center; gap: 10px; }
+    .page-title-icon { width: 32px; height: 32px; background: var(--purple); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .page-title h1 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; color: var(--text); transition: color var(--transition); }
+    .toggle-btn { width: 44px; height: 24px; background: var(--toggle-bg); border-radius: 12px; border: none; cursor: pointer; position: relative; transition: background var(--transition); }
+    .toggle-btn::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--salmon); transition: transform var(--transition), background var(--transition); }
+    body.dark .toggle-btn::after { transform: translateX(20px); background: var(--cyan); }
+
+    .quick-nav { background: var(--header-bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); overflow-x: auto; scrollbar-width: none; transition: background var(--transition), border-color var(--transition); }
+    .quick-nav::-webkit-scrollbar { display: none; }
+    .quick-nav-inner { max-width: 1300px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 2px; }
+    .nav-link { display: flex; align-items: center; gap: 5px; padding: 8px 12px; font-size: 12px; font-weight: 500; color: var(--text2); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .nav-link:hover { color: var(--text); }
+    .nav-link.active { color: var(--purple); border-bottom-color: var(--purple); }
+    .nav-link .nav-icon { font-size: 13px; }
+    .nav-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+    main { max-width: 1300px; margin: 0 auto; padding: 24px; }
+
+    .month-nav { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); transition: all var(--transition); }
+    .month-nav-left { display: flex; align-items: center; gap: 12px; }
+    .month-arrow { width: 32px; height: 32px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); transition: all 0.2s; }
+    .month-arrow:hover { border-color: var(--purple); color: var(--purple); }
+    .month-arrow svg { width: 14px; height: 14px; }
+    .month-display { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; color: var(--text); min-width: 180px; text-align: center; transition: color var(--transition); }
+    .month-badge { font-size: 11px; color: var(--purple); letter-spacing: 0.06em; text-transform: uppercase; background: rgba(167,139,250,0.1); border-radius: 20px; padding: 3px 10px; }
+
+    .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 600px) { .summary-cards { grid-template-columns: 1fr; } }
+    .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); transition: all var(--transition); }
+    .summary-card-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .summary-card-value { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 500; }
+    .v-red { color: var(--red); }
+    .v-cyan { color: var(--cyan); }
+    .v-orange { color: var(--orange); }
+    .v-purple { color: var(--purple); }
+
+    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); transition: all var(--transition); }
+    .add-form-title { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .add-form-fields { display: grid; grid-template-columns: 100px 1fr 140px 180px auto; gap: 8px; align-items: end; }
+    @media (max-width: 900px) { .add-form-fields { grid-template-columns: 1fr 1fr; } }
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-label { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+    .field-input { background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; width: 100%; transition: border-color 0.2s, background var(--transition), color var(--transition); }
+    .field-input:focus { border-color: var(--purple); }
+    .field-input::placeholder { color: var(--text3); }
+    select.field-input { cursor: pointer; }
+
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 300; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); max-height: 200px; overflow-y: auto; display: none; margin-top: 4px; }
+    .autocomplete-list.show { display: block; }
+    .autocomplete-item { padding: 10px 14px; font-size: 13px; color: var(--text2); cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border2); }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover, .autocomplete-item.highlighted { background: var(--purple); color: white; }
+
+    .btn-add { background: var(--purple); color: white; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: transform 0.2s, box-shadow 0.2s; white-space: nowrap; }
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(167,139,250,0.3); }
+
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); transition: all var(--transition); }
+    .table-header-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .table-header-bar h2 { font-size: 13px; font-weight: 600; color: var(--text2); }
+    .table-count { font-size: 12px; color: var(--text3); background: var(--input-bg); border-radius: 20px; padding: 3px 10px; }
+    .table-scroll { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: var(--card2); padding: 10px 14px; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border2); transition: background 0.15s; }
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr:nth-child(even) { background: var(--row-even); }
+    tbody tr:nth-child(even):hover { background: var(--row-hover); }
+    tbody td { padding: 10px 14px; color: var(--text2); vertical-align: middle; }
+    tbody td.data-col { color: var(--text3); font-size: 12px; white-space: nowrap; }
+    tbody td.produto-col { color: var(--text); font-weight: 500; }
+    tbody td.custo-col { color: var(--red); font-weight: 500; text-align: right; }
+
+    .tipo-badge { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+    .tipo-garantia { background: rgba(167,139,250,0.1); color: var(--purple); }
+    .tipo-uso { background: rgba(91,200,212,0.1); color: var(--cyan); }
+    .tipo-brinde { background: rgba(251,146,60,0.1); color: var(--orange); }
+
+    .action-btn { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 13px; transition: all 0.2s; opacity: 0; }
+    tbody tr:hover .action-btn { opacity: 1; }
+    .action-btn.edit:hover { color: var(--cyan); background: rgba(91,200,212,0.1); }
+    .action-btn.del:hover { color: var(--red); background: rgba(248,113,113,0.1); }
+
+    .edit-input { background: var(--input-bg); border: 1.5px solid var(--cyan); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; }
+    .edit-select { background: var(--input-bg); border: 1.5px solid var(--cyan); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; cursor: pointer; }
+    .save-btn { background: var(--cyan); color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .cancel-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text2); }
+
+    .table-footer { display: flex; align-items: center; justify-content: flex-end; gap: 24px; padding: 14px 20px; border-top: 2px solid var(--border); background: var(--card2); transition: all var(--transition); }
+    .footer-item { display: flex; align-items: center; gap: 8px; }
+    .footer-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+    .footer-value { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; color: var(--red); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1000; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 13px; color: var(--text); box-shadow: var(--shadow); display: none; align-items: center; gap: 8px; }
+    .toast.show { display: flex; }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="loja.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Loja
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">🛡️</div>
+          <h1>Garantia</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <nav class="quick-nav">
+    <div class="quick-nav-inner">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span> Dashboard</a>
+      <div class="nav-divider"></div>
+      <a href="loja.html" class="nav-link"><span class="nav-icon">🏪</span> Loja</a>
+      <div class="nav-divider"></div>
+      <a href="caixa.html" class="nav-link"><span class="nav-icon">💰</span> Caixa</a>
+      <a href="custos.html" class="nav-link"><span class="nav-icon">📦</span> Custos</a>
+      <a href="vendas.html" class="nav-link"><span class="nav-icon">🛍️</span> Vendas</a>
+      <a href="servicos.html" class="nav-link"><span class="nav-icon">🔧</span> Serviços</a>
+      <a href="compras.html" class="nav-link"><span class="nav-icon">🛒</span> Compras</a>
+      <a href="cartao.html" class="nav-link"><span class="nav-icon">💳</span> Cartão</a>
+      <div class="nav-divider"></div>
+      <a href="extrato-pj.html" class="nav-link"><span class="nav-icon">🏦</span> Extrato PJ</a>
+      <a href="extrato-pf.html" class="nav-link"><span class="nav-icon">🏧</span> Extrato PF</a>
+      <div class="nav-divider"></div>
+      <a href="emprestimos.html" class="nav-link"><span class="nav-icon">💸</span> Empréstimos</a>
+      <a href="garantia.html" class="nav-link active"><span class="nav-icon">🛡️</span> Garantia</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <div class="month-nav">
+      <div class="month-nav-left">
+        <button class="month-arrow" onclick="changeMonth(-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="month-display" id="monthDisplay">—</div>
+        <button class="month-arrow" onclick="changeMonth(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <span class="month-badge" id="monthBadge"></span>
+    </div>
+
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-label">Total Garantias</div>
+        <div class="summary-card-value v-purple" id="totalGarantia">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Total Uso Interno</div>
+        <div class="summary-card-value v-cyan" id="totalUso">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Total Brindes</div>
+        <div class="summary-card-value v-orange" id="totalBrinde">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="add-form">
+      <div class="add-form-title">Novo lançamento</div>
+      <div class="add-form-fields">
+        <div class="field-group">
+          <div class="field-label">Data</div>
+          <input type="text" class="field-input" id="inputData" placeholder="26/04" maxlength="5" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Produto</div>
+          <div class="autocomplete-wrap">
+            <input type="text" class="field-input" id="inputProduto" placeholder="Nome do produto" autocomplete="off"
+              oninput="showAuto()" onkeydown="handleAutoKey(event)" onfocus="showAuto()" />
+            <div class="autocomplete-list" id="autoList"></div>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Custo (R$)</div>
+          <input type="number" class="field-input" id="inputCusto" placeholder="0,00" step="0.01" min="0" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Tipo</div>
+          <select class="field-input" id="inputTipo">
+            <option value="GARANTIA">Garantia</option>
+            <option value="USO INTERNO">Uso Interno</option>
+            <option value="BRINDE">Brinde</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">&nbsp;</div>
+          <button class="btn-add" onclick="addGarantia()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>Registros do mês</h2>
+        <span class="table-count" id="tableCount">0 registros</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Produto</th>
+              <th style="text-align:right">Custo</th>
+              <th>Tipo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text3)">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="footer-item">
+          <span class="footer-label">Total do Mês</span>
+          <span class="footer-value" id="footerTotal">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _supabase = createClient(
+      'https://wrfuiapognukqxxnwfcq.supabase.co',
+      'sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV'
+    );
+
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+    let registros = [];
+    let autocompleteData = [];
+
+    // THEME
+    let manualOverride = false;
+    function getSunsetHour() { const m = new Date().getMonth(); if (m >= 10 || m <= 2) return 19; if (m >= 4 && m <= 7) return 17; return 18; }
+    function getAutoTheme() { const h = new Date().getHours(); return (h >= getSunsetHour() || h < 6) ? 'dark' : 'light'; }
+    function applyTheme(t) { document.body.classList.remove('light','dark'); document.body.classList.add(t); }
+    function toggleTheme() { manualOverride = true; applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark'); }
+    applyTheme(getAutoTheme());
+    setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
+
+    // MONTH
+    function updateMonthDisplay() {
+      const date = new Date(currentYear, currentMonth - 1, 1);
+      const name = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      document.getElementById('monthDisplay').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+      const today = new Date();
+      document.getElementById('monthBadge').textContent = (currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1) ? 'Mês atual' : '';
+    }
+
+    function changeMonth(dir) {
+      currentMonth += dir;
+      if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+      if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+      updateMonthDisplay();
+      loadGarantia();
+    }
+
+    // FORMAT
+    function formatBRL(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0); }
+
+    function formatDate(dataRef) {
+      if (!dataRef) return '';
+      const p = dataRef.split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : dataRef;
+    }
+
+    function parseDate(raw) {
+      const parts = raw.split('/');
+      if (parts.length === 2) return `${currentYear}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      if (parts.length === 3) return `20${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      return `${currentYear}-${String(currentMonth).padStart(2,'0')}-${raw.padStart(2,'0')}`;
+    }
+
+    // LOAD AUTOCOMPLETE
+    async function loadAutocomplete() {
+      const { data } = await _supabase.from('descricoes').select('texto').in('tipo', ['produto', 'ambos']).order('texto');
+      autocompleteData = data ? data.map(d => d.texto) : [];
+    }
+
+    // LOAD
+    async function loadGarantia() {
+      const pad = n => String(n).padStart(2, '0');
+      const start = `${currentYear}-${pad(currentMonth)}-01`;
+      const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+      const end = `${currentYear}-${pad(currentMonth)}-${lastDay}`;
+
+      const { data } = await _supabase.from('garantia').select('*').gte('data_ref', start).lte('data_ref', end).order('data_ref').order('created_at');
+      registros = data || [];
+      renderTable();
+      updateSummary();
+    }
+
+    // RENDER
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      document.getElementById('tableCount').textContent = `${registros.length} registro${registros.length !== 1 ? 's' : ''}`;
+
+      if (registros.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🛡️</div><p>Nenhum lançamento neste mês.</p></div></td></tr>`;
+        return;
+      }
+
+      const tipoClass = { 'GARANTIA': 'tipo-garantia', 'USO INTERNO': 'tipo-uso', 'BRINDE': 'tipo-brinde' };
+
+      tbody.innerHTML = registros.map(row => `
+        <tr id="row-${row.id}">
+          <td class="data-col">${formatDate(row.data_ref)}</td>
+          <td class="produto-col">${row.produto || ''}</td>
+          <td class="custo-col">${formatBRL(row.custo)}</td>
+          <td><span class="tipo-badge ${tipoClass[row.tipo] || ''}">${row.tipo || ''}</span></td>
+          <td style="text-align:right; white-space:nowrap">
+            <button class="action-btn edit" onclick="startEdit('${row.id}', '${formatDate(row.data_ref)}', '${(row.produto||'').replace(/'/g,"\\'")}', '${row.custo||''}', '${row.tipo||''}')">✏️</button>
+            <button class="action-btn del" onclick="deleteGarantia('${row.id}')">✕</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    // SUMMARY
+    function updateSummary() {
+      let tg = 0, tu = 0, tb = 0;
+      registros.forEach(r => {
+        const v = parseFloat(r.custo) || 0;
+        if (r.tipo === 'GARANTIA') tg += v;
+        else if (r.tipo === 'USO INTERNO') tu += v;
+        else if (r.tipo === 'BRINDE') tb += v;
+      });
+      document.getElementById('totalGarantia').textContent = formatBRL(tg);
+      document.getElementById('totalUso').textContent = formatBRL(tu);
+      document.getElementById('totalBrinde').textContent = formatBRL(tb);
+      document.getElementById('footerTotal').textContent = formatBRL(tg + tu + tb);
+    }
+
+    // ADD
+    async function addGarantia() {
+      const dataRaw = document.getElementById('inputData').value.trim();
+      const produto = document.getElementById('inputProduto').value.trim().toUpperCase();
+      const custo = parseFloat(document.getElementById('inputCusto').value) || 0;
+      const tipo = document.getElementById('inputTipo').value;
+
+      if (!dataRaw) { showToast('Informe a data', 'error'); return; }
+      if (!produto) { showToast('Informe o produto', 'error'); return; }
+
+      const { error } = await _supabase.from('garantia').insert({
+        data_ref: parseDate(dataRaw), produto, custo: custo || null, tipo
+      });
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+
+      document.getElementById('inputProduto').value = '';
+      document.getElementById('inputCusto').value = '';
+      document.getElementById('inputProduto').focus();
+      await loadGarantia();
+      showToast('Lançamento adicionado!', 'success');
+    }
+
+    // EDIT
+    function startEdit(id, dataDisp, produto, custo, tipo) {
+      const tipoOptions = ['GARANTIA', 'USO INTERNO', 'BRINDE'].map(t =>
+        `<option value="${t}" ${t === tipo ? 'selected' : ''}>${t}</option>`
+      ).join('');
+
+      document.getElementById(`row-${id}`).innerHTML = `
+        <td><input class="edit-input" id="ed-data-${id}" value="${dataDisp}" style="width:70px" /></td>
+        <td><input class="edit-input" id="ed-prod-${id}" value="${produto}" style="width:100%" /></td>
+        <td><input class="edit-input" id="ed-custo-${id}" type="number" value="${custo}" style="width:100px;text-align:right" /></td>
+        <td><select class="edit-select" id="ed-tipo-${id}">${tipoOptions}</select></td>
+        <td style="text-align:right; white-space:nowrap">
+          <button class="save-btn" onclick="saveEdit('${id}')">✓ salvar</button>
+          <button class="cancel-btn" onclick="loadGarantia()">cancelar</button>
+        </td>`;
+      document.getElementById(`ed-prod-${id}`).focus();
+    }
+
+    async function saveEdit(id) {
+      const dataRaw = document.getElementById(`ed-data-${id}`).value.trim();
+      const produto = document.getElementById(`ed-prod-${id}`).value.trim().toUpperCase();
+      const custo = parseFloat(document.getElementById(`ed-custo-${id}`).value) || null;
+      const tipo = document.getElementById(`ed-tipo-${id}`).value;
+
+      if (!dataRaw || !produto) { showToast('Preencha data e produto', 'error'); return; }
+
+      const { error } = await _supabase.from('garantia').update({
+        data_ref: parseDate(dataRaw), produto, custo, tipo
+      }).eq('id', id);
+
+      if (error) { showToast('Erro ao salvar', 'error'); return; }
+      await loadGarantia();
+      showToast('Atualizado!', 'success');
+    }
+
+    // DELETE
+    async function deleteGarantia(id) {
+      if (!confirm('Excluir este lançamento?')) return;
+      await _supabase.from('garantia').delete().eq('id', id);
+      await loadGarantia();
+      showToast('Excluído!', 'success');
+    }
+
+    // AUTOCOMPLETE
+    function showAuto() {
+      const input = document.getElementById('inputProduto');
+      const list = document.getElementById('autoList');
+      const val = input.value.toUpperCase();
+      const filtered = autocompleteData.filter(i => i.includes(val) && i !== val).slice(0, 8);
+      if (!filtered.length) { list.classList.remove('show'); return; }
+      list.innerHTML = filtered.map(i => `<div class="autocomplete-item" onmousedown="selectAuto('${i}')">${i}</div>`).join('');
+      list.classList.add('show');
+    }
+
+    function selectAuto(value) {
+      document.getElementById('inputProduto').value = value;
+      document.getElementById('autoList').classList.remove('show');
+      document.getElementById('inputCusto').focus();
+    }
+
+    function handleAutoKey(e) {
+      const list = document.getElementById('autoList');
+      const items = list.querySelectorAll('.autocomplete-item');
+      const highlighted = list.querySelector('.highlighted');
+      let idx = Array.from(items).indexOf(highlighted);
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (highlighted) highlighted.classList.remove('highlighted'); items[(idx+1)%items.length]?.classList.add('highlighted'); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (highlighted) highlighted.classList.remove('highlighted'); items[(idx-1+items.length)%items.length]?.classList.add('highlighted'); }
+      else if (e.key === 'Enter') { if (highlighted) { e.preventDefault(); selectAuto(highlighted.textContent); } else { list.classList.remove('show'); document.getElementById('inputCusto').focus(); } }
+      else if (e.key === 'Escape' || e.key === 'Tab') { list.classList.remove('show'); }
+    }
+
+    document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l => l.classList.remove('show')); });
+
+    // TOAST
+    let toastTimeout;
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+      t.className = `toast show ${type}`;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // DEFAULT DATE
+    function setDefaultDate() {
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      document.getElementById('inputData').value = `${String(y.getDate()).padStart(2,'0')}/${String(y.getMonth()+1).padStart(2,'0')}`;
+    }
+
+    // INIT
+    async function init() {
+      const { data } = await _supabase.auth.getSession();
+      if (!data.session) { window.location.href = 'index.html'; return; }
+      updateMonthDisplay();
+      setDefaultDate();
+      await loadAutocomplete();
+      await loadGarantia();
+    }
+
+    init();
+  </script>
+</body>
+</html>
