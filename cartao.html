@@ -311,7 +311,7 @@
       <input type="hidden" id="mcId" />
       <div class="modal-field"><label class="modal-label">Nome</label><input type="text" class="modal-input" id="mcNome" placeholder="Ex: Nubank" /></div>
       <div class="modal-field"><label class="modal-label">Dia de vencimento</label><input type="number" class="modal-input" id="mcVenc" placeholder="Ex: 15" min="1" max="31" /></div>
-      <div class="modal-field"><label class="modal-label">Limite (R$)</label><input type="number" class="modal-input" id="mcLimite" placeholder="Ex: 5000" step="0.01" /></div>
+      <div class="modal-field"><label class="modal-label">Limite (R$)</label><input type="text" class="modal-input" id="mcLimite" placeholder="Ex: 5.000,00" inputmode="decimal" /></div>
       <div class="modal-field"><label class="modal-label">Cashback (%)</label><input type="number" class="modal-input" id="mcCashback" placeholder="Ex: 1.5" step="0.1" min="0" max="100" /></div>
       <div class="modal-btns">
         <button class="modal-cancel" id="btnCancelCartao">Cancelar</button>
@@ -328,7 +328,7 @@
         <div class="pagar-info-row"><span>Total da fatura</span><span id="mpTotal" style="color:var(--pink)">R$ 0,00</span></div>
         <div class="pagar-info-row"><span>Em aberto</span><span id="mpAberto" style="color:var(--red)">R$ 0,00</span></div>
       </div>
-      <div class="modal-field"><label class="modal-label">Valor a pagar (R$)</label><input type="number" class="modal-input" id="mpValor" placeholder="0,00" step="0.01" /></div>
+      <div class="modal-field"><label class="modal-label">Valor a pagar (R$)</label><input type="text" class="modal-input" id="mpValor" placeholder="Ex: 1.500,00" inputmode="decimal" /></div>
       <div class="pagar-preview" id="mpPreview">Digite o valor para ver como ficará o pagamento...</div>
       <div class="modal-btns">
         <button class="modal-cancel" id="btnCancelPagar">Cancelar</button>
@@ -543,7 +543,7 @@
       const id = document.getElementById('mcId').value;
       const nome = document.getElementById('mcNome').value.trim().toUpperCase();
       const venc = parseInt(document.getElementById('mcVenc').value);
-      const limite = parseFloat(document.getElementById('mcLimite').value)||null;
+      const limite = parseBRL(document.getElementById('mcLimite').value)||null;
       const cashback_pct = parseFloat(document.getElementById('mcCashback').value)||1.5;
       if(!nome||!venc){showToast('Preencha nome e vencimento','error');return;}
       if(id) {
@@ -713,7 +713,7 @@
     });
 
     document.getElementById('mpValor').addEventListener('input', () => {
-      const valorPagar=parseFloat(document.getElementById('mpValor').value)||0;
+      const valorPagar=parseBRL(document.getElementById('mpValor').value);
       if(valorPagar<=0){document.getElementById('mpPreview').textContent='Digite o valor...';return;}
       const abertos=lancamentos.filter(l=>l.status!=='pago').sort((a,b)=>(parseFloat(a.valor)||0)-(parseFloat(b.valor)||0));
       let rest=valorPagar, lines=[];
@@ -729,7 +729,7 @@
     document.getElementById('btnCancelPagar').addEventListener('click', () => document.getElementById('modalPagar').classList.remove('show'));
 
     document.getElementById('btnConfirmarPagar').addEventListener('click', async () => {
-      const valorPagar=parseFloat(document.getElementById('mpValor').value)||0;
+      const valorPagar=parseBRL(document.getElementById('mpValor').value);
       if(valorPagar<=0){showToast('Informe o valor','error');return;}
       const abertos=lancamentos.filter(l=>l.status!=='pago').sort((a,b)=>(parseFloat(a.valor)||0)-(parseFloat(b.valor)||0));
       let rest=valorPagar;
