@@ -391,7 +391,8 @@
   <!-- MODAL NOVO CARTÃO -->
   <div class="modal-overlay" id="modalCartao">
     <div class="modal">
-      <h3>Novo Cartão</h3>
+      <h3 id="modalCartaoTitle">Novo Cartão</h3>
+      <input type="hidden" id="mc-id" value="" />
       <div class="modal-field">
         <label class="modal-label">Nome do cartão</label>
         <input type="text" class="modal-input" id="mc-nome" placeholder="Ex: Nubank, Inter, Itaú..." />
@@ -403,6 +404,10 @@
       <div class="modal-field">
         <label class="modal-label">Limite (R$)</label>
         <input type="number" class="modal-input" id="mc-limite" placeholder="Ex: 5000" step="0.01" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Cashback (%)</label>
+        <input type="number" class="modal-input" id="mc-cashback" placeholder="Ex: 1.5" step="0.1" min="0" max="100" />
       </div>
       <div class="modal-btns">
         <button class="modal-cancel" onclick="closeModalCartao()">Cancelar</button>
@@ -482,7 +487,9 @@
     setInterval(() => { if (!manualOverride) applyTheme(getAutoTheme()); }, 60000);
 
     // FORMAT
-    function formatBRL(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0); }
+    function formatBRL(v) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
+    }
 
     function formatDate(dataRef) {
       if (!dataRef) return '';
@@ -542,8 +549,14 @@
 
         return `
           <div class="cartao-card ${selectedCartao?.id === c.id ? 'selected' : ''}" onclick="selectCartao('${c.id}')">
-            <div class="cartao-nome">${c.nome}</div>
-            <div class="cartao-venc">Vence dia ${c.vencimento}${limite > 0 ? ' • Limite ' + formatBRL(limite) : ''}</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="cartao-nome">${c.nome}</div>
+              <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+                <button onclick="editCartao('${c.id}')" style="background:rgba(255,255,255,0.1);border:none;border-radius:6px;padding:3px 7px;cursor:pointer;color:white;font-size:11px">✏️</button>
+                <button onclick="deleteCartao('${c.id}')" style="background:rgba(248,113,113,0.2);border:none;border-radius:6px;padding:3px 7px;cursor:pointer;color:var(--red);font-size:11px">✕</button>
+              </div>
+            </div>
+            <div class="cartao-venc">Vence dia ${c.vencimento}${limite > 0 ? ' • Limite ' + formatBRL(limite) : ''}${c.cashback_pct ? ' • Cashback ' + c.cashback_pct + '%' : ''}</div>
             <div class="cartao-total-label">Em aberto</div>
             <div class="cartao-total">${formatBRL(aberto)}</div>
             ${pago > 0 ? `<div class="cartao-pago">✓ ${formatBRL(pago)} pago</div>` : ''}
@@ -607,7 +620,8 @@
         const statusLabel = isPago ? 'pago' : isParcial ? 'parcial' : 'aberto';
         const statusClass = isPago ? 'status-pago' : isParcial ? 'status-parcial' : 'status-aberto';
         const tipoClass = tipo === 'pessoal' ? 'tipo-pessoal' : 'tipo-loja';
-        const cashback = (parseFloat(row.valor) || 0) * 0.015;
+        const cashbackPct = (parseFloat(selectedCartao?.cashback_pct) || 1.5) / 100;
+        const cashback = (parseFloat(row.valor) || 0) * cashbackPct;
 
         return `<tr class="${isPago ? 'pago' : isParcial ? 'parcial' : ''}" id="row-${row.id}">
           <td class="data-col">${formatDate(row.data_ref)}</td>
@@ -640,7 +654,8 @@
         if (tipo === 'pessoal') pessoal += v; else loja += v;
       });
 
-      const cashback = total * 0.015;
+      const cashbackPct = (parseFloat(selectedCartao?.cashback_pct) || 1.5) / 100;
+      const cashback = total * cashbackPct;
 
       document.getElementById('faturaTotal').textContent = formatBRL(total);
       document.getElementById('faturaAberto').textContent = formatBRL(aberto);
@@ -715,23 +730,60 @@
       showToast('Excluído!', 'success');
     }
 
-    // MODAL CARTÃO
-    function openModalCartao() { document.getElementById('modalCartao').classList.add('show'); document.getElementById('mc-nome').focus(); }
-    function closeModalCartao() { document.getElementById('modalCartao').classList.remove('show'); }
-
-    async function saveCartao() {
-      const nome = document.getElementById('mc-nome').value.trim().toUpperCase();
-      const venc = document.getElementById('mc-venc').value;
-      const limite = parseFloat(document.getElementById('mc-limite').value) || null;
-      if (!nome || !venc) { showToast('Preencha nome e vencimento', 'error'); return; }
-      const { error } = await _supabase.from('cartoes').insert({ nome, vencimento: parseInt(venc), limite });
-      if (error) { showToast('Erro ao salvar', 'error'); return; }
-      closeModalCartao();
+    function openModalCartao() {
+      document.getElementById('modalCartaoTitle').textContent = 'Novo Cartão';
+      document.getElementById('mc-id').value = '';
       document.getElementById('mc-nome').value = '';
       document.getElementById('mc-venc').value = '';
       document.getElementById('mc-limite').value = '';
+      document.getElementById('mc-cashback').value = '';
+      document.getElementById('modalCartao').classList.add('show');
+      document.getElementById('mc-nome').focus();
+    }
+
+    function closeModalCartao() { document.getElementById('modalCartao').classList.remove('show'); }
+
+    function editCartao(id) {
+      const c = cartoes.find(c => c.id == id);
+      if (!c) return;
+      document.getElementById('modalCartaoTitle').textContent = 'Editar Cartão';
+      document.getElementById('mc-id').value = c.id;
+      document.getElementById('mc-nome').value = c.nome;
+      document.getElementById('mc-venc').value = c.vencimento;
+      document.getElementById('mc-limite').value = c.limite || '';
+      document.getElementById('mc-cashback').value = c.cashback_pct || '';
+      document.getElementById('modalCartao').classList.add('show');
+      document.getElementById('mc-nome').focus();
+    }
+
+    async function deleteCartao(id) {
+      if (!confirm('Excluir este cartão e todos os lançamentos?')) return;
+      await _supabase.from('cartao_lancamentos').delete().eq('cartao_id', id);
+      await _supabase.from('cartoes').delete().eq('id', id);
+      if (selectedCartao?.id == id) { selectedCartao = null; lancamentos = []; renderTable(); updateSummary(); }
       await loadCartoes();
-      showToast('Cartão adicionado!', 'success');
+      showToast('Cartão excluído!', 'success');
+    }
+
+    async function saveCartao() {
+      const id = document.getElementById('mc-id').value;
+      const nome = document.getElementById('mc-nome').value.trim().toUpperCase();
+      const venc = document.getElementById('mc-venc').value;
+      const limite = parseFloat(document.getElementById('mc-limite').value) || null;
+      const cashback_pct = parseFloat(document.getElementById('mc-cashback').value) || 1.5;
+
+      if (!nome || !venc) { showToast('Preencha nome e vencimento', 'error'); return; }
+
+      if (id) {
+        await _supabase.from('cartoes').update({ nome, vencimento: parseInt(venc), limite, cashback_pct }).eq('id', id);
+        if (selectedCartao?.id == id) selectedCartao = { ...selectedCartao, nome, vencimento: parseInt(venc), limite, cashback_pct };
+      } else {
+        await _supabase.from('cartoes').insert({ nome, vencimento: parseInt(venc), limite, cashback_pct });
+      }
+
+      closeModalCartao();
+      await loadCartoes();
+      showToast(id ? 'Cartão atualizado!' : 'Cartão adicionado!', 'success');
     }
 
     // MODAL PAGAMENTO
