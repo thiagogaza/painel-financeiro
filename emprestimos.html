@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empréstimos — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --salmon:#E07060; --cyan:#5BC8D4; --green:#34D399; --red:#F87171; --orange:#FB923C; --yellow:#FBBF24; --purple:#A78BFA; --transition:0.4s cubic-bezier(0.4,0,0.2,1); }
+    body.light { --bg:#F5F2EE; --card:#FFFFFF; --card2:#FAFAFA; --text:#1A1A1A; --text2:#6B6B6B; --text3:#9A9A9A; --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.04); --shadow:0 2px 16px rgba(0,0,0,0.06); --input-bg:#F5F2EE; --toggle-bg:#E0DDD8; --row-hover:rgba(0,0,0,0.02); --header-bg:rgba(255,255,255,0.95); }
+    body.dark { --bg:#111214; --card:#1E2024; --card2:#23262B; --text:#F0EDE8; --text2:#888888; --text3:#555555; --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.03); --shadow:0 2px 16px rgba(0,0,0,0.3); --input-bg:#15171A; --toggle-bg:#2A2D32; --row-hover:rgba(255,255,255,0.03); --header-bg:rgba(30,32,36,0.95); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background var(--transition),color var(--transition); }
+    header { position:sticky; top:0; z-index:200; background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); }
+    .header-inner { max-width:1300px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .back-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; text-decoration:none; }
+    .back-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+    .page-title { display:flex; align-items:center; gap:10px; }
+    .page-title-icon { width:32px; height:32px; background:var(--yellow); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .page-title h1 { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); }
+    .toggle-btn { width:44px; height:24px; background:var(--toggle-bg); border-radius:12px; border:none; cursor:pointer; position:relative; transition:background var(--transition); }
+    .toggle-btn::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--salmon); transition:transform var(--transition),background var(--transition); }
+    body.dark .toggle-btn::after { transform:translateX(20px); background:var(--cyan); }
+
+    .quick-nav { background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); overflow-x:auto; scrollbar-width:none; }
+    .quick-nav::-webkit-scrollbar { display:none; }
+    .quick-nav-inner { max-width:1300px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:2px; }
+    .nav-link { display:flex; align-items:center; gap:5px; padding:8px 12px; font-size:12px; font-weight:500; color:var(--text2); text-decoration:none; white-space:nowrap; border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s; }
+    .nav-link:hover { color:var(--text); }
+    .nav-link.active { color:var(--yellow); border-bottom-color:var(--yellow); }
+    .nav-link .nav-icon { font-size:13px; }
+    .nav-divider { width:1px; height:16px; background:var(--border); margin:0 4px; flex-shrink:0; }
+
+    main { max-width:1300px; margin:0 auto; padding:24px; }
+
+    /* SUMMARY CARDS */
+    .summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+    @media(max-width:600px) { .summary-cards { grid-template-columns:1fr; } }
+    .summary-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+    .summary-card-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+    .summary-card-value { font-family:'Playfair Display',serif; font-size:22px; font-weight:500; }
+    .v-red { color:var(--red); } .v-green { color:var(--green); } .v-yellow { color:var(--yellow); }
+
+    /* EMPRESTIMOS LISTA */
+    .section-title { font-size:11px; font-weight:600; color:var(--text3); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .emprestimos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-bottom:28px; }
+
+    .emp-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); transition:all var(--transition); }
+    .emp-card.quitado { opacity:0.6; }
+    .emp-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+    .emp-nome { font-family:'Playfair Display',serif; font-size:16px; font-weight:500; color:var(--text); }
+    .emp-codigo { font-size:11px; color:var(--text3); margin-top:2px; letter-spacing:0.06em; }
+    .emp-actions { display:flex; gap:6px; }
+    .emp-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.2s; }
+    .emp-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+    .emp-btn.del:hover { border-color:var(--red); color:var(--red); }
+
+    .emp-progress { margin-bottom:14px; }
+    .emp-progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+    .emp-progress-fill { height:100%; border-radius:3px; background:var(--yellow); transition:width 0.5s; }
+    .emp-progress-fill.done { background:var(--green); }
+    .emp-progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text3); }
+
+    .emp-details { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .emp-detail { background:var(--input-bg); border-radius:8px; padding:8px 10px; }
+    .emp-detail-label { font-size:10px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:2px; }
+    .emp-detail-value { font-size:13px; font-weight:500; color:var(--text); }
+    .emp-detail-value.red { color:var(--red); }
+    .emp-detail-value.green { color:var(--green); }
+
+    .emp-status { display:inline-flex; align-items:center; gap:4px; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; margin-top:10px; }
+    .emp-status.ativo { background:rgba(251,191,36,0.1); color:var(--yellow); }
+    .emp-status.quitado { background:rgba(52,211,153,0.1); color:var(--green); }
+    .emp-status.atrasado { background:rgba(248,113,113,0.1); color:var(--red); }
+
+    /* PARCELAS */
+    .parcelas-wrap { margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
+    .parcelas-title { font-size:11px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .parcelas-list { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; }
+    .parcela-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--input-bg); font-size:12px; }
+    .parcela-row.paga { opacity:0.5; }
+    .parcela-num { color:var(--text3); width:50px; }
+    .parcela-venc { color:var(--text2); flex:1; }
+    .parcela-valor { color:var(--text); font-weight:500; }
+    .parcela-status { width:60px; text-align:right; }
+    .parcela-ok { color:var(--green); font-size:11px; }
+    .parcela-pend { color:var(--yellow); font-size:11px; }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:var(--card); border-radius:20px; padding:28px; width:100%; max-width:500px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto; }
+    .modal h3 { font-family:'Playfair Display',serif; font-size:18px; margin-bottom:20px; color:var(--text); }
+    .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .modal-field { margin-bottom:0; }
+    .modal-field.full { grid-column:span 2; }
+    .modal-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; display:block; }
+    .modal-input { width:100%; background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:10px 14px; font-size:14px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; transition:border-color 0.2s; }
+    .modal-input:focus { border-color:var(--yellow); }
+    .modal-btns { display:flex; gap:10px; margin-top:20px; }
+    .modal-save { flex:1; background:var(--yellow); color:white; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+    .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:10px; padding:11px; font-size:14px; cursor:pointer; color:var(--text2); font-family:'DM Sans',sans-serif; }
+
+    .btn-novo { display:inline-flex; align-items:center; gap:6px; background:var(--yellow); color:white; border:none; border-radius:10px; padding:10px 20px; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; margin-bottom:20px; }
+    .btn-novo:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(251,191,36,0.3); }
+
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text3); background:var(--card); border:1px solid var(--border); border-radius:16px; }
+    .empty-state .empty-icon { font-size:36px; margin-bottom:12px; }
+
+    /* PAGAMENTOS IDENTIFICADOS */
+    .pagamentos-section { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); }
+    .pagamento-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border2); font-size:13px; }
+    .pagamento-row:last-child { border-bottom:none; }
+    .pagamento-desc { color:var(--text); font-weight:500; }
+    .pagamento-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+    .pagamento-valor { color:var(--red); font-weight:600; font-family:'Playfair Display',serif; }
+    .pagamento-origem { font-size:11px; background:var(--input-bg); border-radius:6px; padding:2px 8px; color:var(--text2); }
+
+    .toast { position:fixed; bottom:24px; right:24px; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; color:var(--text); box-shadow:var(--shadow); display:none; align-items:center; gap:8px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error { border-left:3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="loja.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Loja
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">💸</div>
+          <h1>Empréstimos</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <nav class="quick-nav">
+    <div class="quick-nav-inner">
+      <a href="dashboard.html" class="nav-link"><span class="nav-icon">⌂</span> Dashboard</a>
+      <div class="nav-divider"></div>
+      <a href="loja.html" class="nav-link"><span class="nav-icon">🏪</span> Loja</a>
+      <div class="nav-divider"></div>
+      <a href="caixa.html" class="nav-link"><span class="nav-icon">💰</span> Caixa</a>
+      <a href="custos.html" class="nav-link"><span class="nav-icon">📦</span> Custos</a>
+      <a href="vendas.html" class="nav-link"><span class="nav-icon">🛍️</span> Vendas</a>
+      <a href="servicos.html" class="nav-link"><span class="nav-icon">🔧</span> Serviços</a>
+      <a href="compras.html" class="nav-link"><span class="nav-icon">🛒</span> Compras</a>
+      <a href="cartao.html" class="nav-link"><span class="nav-icon">💳</span> Cartão</a>
+      <div class="nav-divider"></div>
+      <a href="extrato-pj.html" class="nav-link"><span class="nav-icon">🏦</span> Extrato PJ</a>
+      <a href="extrato-pf.html" class="nav-link"><span class="nav-icon">🏧</span> Extrato PF</a>
+      <div class="nav-divider"></div>
+      <a href="emprestimos.html" class="nav-link active"><span class="nav-icon">💸</span> Empréstimos</a>
+      <a href="garantia.html" class="nav-link"><span class="nav-icon">🛡️</span> Garantia</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- SUMMARY -->
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-card-label">Total Emprestado</div>
+        <div class="summary-card-value v-yellow" id="totalEmprestado">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Total Restante</div>
+        <div class="summary-card-value v-red" id="totalRestante">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Total Pago</div>
+        <div class="summary-card-value v-green" id="totalPago">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- EMPRÉSTIMOS -->
+    <div class="section-title">Empréstimos cadastrados</div>
+
+    <button class="btn-novo" id="btnNovoEmp">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Novo Empréstimo
+    </button>
+
+    <div class="emprestimos-grid" id="emprestimosGrid">
+      <div class="empty-state">
+        <div class="empty-icon">💸</div>
+        <p>Carregando empréstimos...</p>
+      </div>
+    </div>
+
+    <!-- PAGAMENTOS IDENTIFICADOS -->
+    <div class="section-title">Pagamentos identificados nos extratos</div>
+    <div class="pagamentos-section" id="pagamentosSection">
+      <p style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Nenhum pagamento identificado ainda.<br>Registre lançamentos com "PREST. EMPRESTIMO X" no Caixa, Extrato PJ ou PF.</p>
+    </div>
+
+  </main>
+
+  <!-- MODAL NOVO EMPRÉSTIMO -->
+  <div class="modal-overlay" id="modalEmp">
+    <div class="modal">
+      <h3 id="modalEmpTitle">Novo Empréstimo</h3>
+      <input type="hidden" id="empId" />
+      <div class="modal-grid">
+        <div class="modal-field full">
+          <label class="modal-label">Nome / Identificação</label>
+          <input type="text" class="modal-input" id="empNome" placeholder="Ex: Empréstimo Banco X, Empréstimo 1" />
+        </div>
+        <div class="modal-field full">
+          <label class="modal-label">Código para identificação automática</label>
+          <input type="text" class="modal-input" id="empCodigo" placeholder="Ex: EMPRESTIMO 1 (usado nos extratos)" />
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Use este código nos lançamentos: PREST. EMPRESTIMO 1 - 10/20</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Valor Total (R$)</label>
+          <input type="text" class="modal-input" id="empValor" placeholder="Ex: 10.000,00" inputmode="decimal" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Nº de Parcelas</label>
+          <input type="number" class="modal-input" id="empParcelas" placeholder="Ex: 20" min="1" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Valor da Parcela (R$)</label>
+          <input type="text" class="modal-input" id="empValParcela" placeholder="Ex: 550,00" inputmode="decimal" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Data 1ª Parcela</label>
+          <input type="date" class="modal-input" id="empDataInicio" />
+        </div>
+        <div class="modal-field full">
+          <label class="modal-label">Credor / Banco</label>
+          <input type="text" class="modal-input" id="empCredor" placeholder="Ex: Banco Sicredi, Familiar..." />
+        </div>
+        <div class="modal-field full">
+          <label class="modal-label">Observação</label>
+          <input type="text" class="modal-input" id="empObs" placeholder="Observação opcional" />
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" id="btnCancelEmp">Cancelar</button>
+        <button class="modal-save" id="btnSaveEmp">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _sb = createClient('https://wrfuiapognukqxxnwfcq.supabase.co','sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV');
+
+    let emprestimos = [];
+    let pagamentosIdentificados = [];
+
+    // THEME
+    let manualOverride = false;
+    const getSunsetHour = () => { const m=new Date().getMonth(); return m>=10||m<=2?19:m>=4&&m<=7?17:18; };
+    const getAutoTheme = () => (new Date().getHours()>=getSunsetHour()||new Date().getHours()<6)?'dark':'light';
+    const applyTheme = t => { document.body.classList.remove('light','dark'); document.body.classList.add(t); };
+    const toggleTheme = () => { manualOverride=true; applyTheme(document.body.classList.contains('dark')?'light':'dark'); };
+    applyTheme(getAutoTheme());
+    setInterval(()=>{ if(!manualOverride) applyTheme(getAutoTheme()); },60000);
+
+    // FORMAT
+    const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+    const parseBRL = v => { if(!v) return 0; const s=String(v).trim(); return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:parseFloat(s)||0; };
+    const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d; };
+
+    // TOAST
+    let toastT;
+    const showToast = (msg,type='success') => {
+      const t=document.getElementById('toast');
+      t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+      t.className=`toast show ${type}`;
+      clearTimeout(toastT);
+      toastT=setTimeout(()=>t.classList.remove('show'),3000);
+    };
+
+    // LOAD
+    const loadEmprestimos = async () => {
+      const {data} = await _sb.from('emprestimos').select('*').order('created_at');
+      emprestimos = data || [];
+      renderEmprestimos();
+      updateSummary();
+      await loadPagamentos();
+    };
+
+    const loadPagamentos = async () => {
+      // Search for PREST. keywords in caixa, extrato_pj, extrato_pf
+      const [c1, c2, c3] = await Promise.all([
+        _sb.from('caixa').select('data,historico,debito').ilike('historico','%PREST%'),
+        _sb.from('extrato_pj').select('data,historico,debito').ilike('historico','%PREST%'),
+        _sb.from('extrato_pf').select('data,historico,debito').ilike('historico','%PREST%'),
+      ]);
+
+      const all = [
+        ...(c1.data||[]).map(r=>({...r,origem:'Caixa'})),
+        ...(c2.data||[]).map(r=>({...r,origem:'Extrato PJ'})),
+        ...(c3.data||[]).map(r=>({...r,origem:'Extrato PF'})),
+      ];
+
+      pagamentosIdentificados = all;
+      renderPagamentos();
+
+      // Auto-baixa: match payments to emprestimos
+      for(const p of all) {
+        for(const emp of emprestimos) {
+          if(p.historico.toUpperCase().includes(emp.codigo.toUpperCase())) {
+            // Check if already registered
+            const {data:existing} = await _sb.from('emp_pagamentos').select('id').eq('emprestimo_id',emp.id).eq('historico_ref',p.historico).eq('data_ref',p.data).limit(1);
+            if(!existing||existing.length===0) {
+              await _sb.from('emp_pagamentos').insert({
+                emprestimo_id: emp.id,
+                data_ref: p.data,
+                valor: parseFloat(p.debito)||0,
+                historico_ref: p.historico,
+                origem: p.origem
+              });
+            }
+          }
+        }
+      }
+
+      await loadParcelas();
+    };
+
+    const loadParcelas = async () => {
+      for(const emp of emprestimos) {
+        const {data} = await _sb.from('emp_pagamentos').select('*').eq('emprestimo_id',emp.id);
+        emp.pagamentos = data || [];
+        emp.totalPago = emp.pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+        emp.restante = (parseFloat(emp.valor_total)||0) - emp.totalPago;
+        emp.parcelasPagas = emp.pagamentos.length;
+      }
+      renderEmprestimos();
+      updateSummary();
+    };
+
+    // RENDER EMPRESTIMOS
+    const renderEmprestimos = () => {
+      const grid = document.getElementById('emprestimosGrid');
+      if(!emprestimos.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><p>Nenhum empréstimo cadastrado ainda.<br>Clique em "Novo Empréstimo" para começar.</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      emprestimos.forEach(emp => {
+        const total = parseFloat(emp.valor_total)||0;
+        const pago = emp.totalPago||0;
+        const restante = emp.restante||total;
+        const parcelas = parseInt(emp.num_parcelas)||0;
+        const pagas = emp.parcelasPagas||0;
+        const pct = total>0?Math.min((pago/total)*100,100):0;
+        const isQuitado = restante<=0.01;
+        const statusClass = isQuitado?'quitado':pagas>parcelas?'atrasado':'ativo';
+        const statusLabel = isQuitado?'✓ Quitado':pagas===parcelas&&!isQuitado?'⚠ Em atraso':'● Ativo';
+
+        const card = document.createElement('div');
+        card.className = `emp-card ${isQuitado?'quitado':''}`;
+
+        card.innerHTML = `
+          <div class="emp-card-header">
+            <div>
+              <div class="emp-nome">${emp.nome}</div>
+              <div class="emp-codigo">Código: ${emp.codigo} ${emp.credor?'• '+emp.credor:''}</div>
+            </div>
+            <div class="emp-actions">
+              <button class="emp-btn" data-edit="${emp.id}">✏️</button>
+              <button class="emp-btn del" data-del="${emp.id}">✕</button>
+            </div>
+          </div>
+
+          <div class="emp-progress">
+            <div class="emp-progress-bar">
+              <div class="emp-progress-fill ${isQuitado?'done':''}" style="width:${pct}%"></div>
+            </div>
+            <div class="emp-progress-labels">
+              <span>${pagas} de ${parcelas} parcelas pagas</span>
+              <span>${pct.toFixed(0)}%</span>
+            </div>
+          </div>
+
+          <div class="emp-details">
+            <div class="emp-detail">
+              <div class="emp-detail-label">Valor Total</div>
+              <div class="emp-detail-value">${fmtBRL(total)}</div>
+            </div>
+            <div class="emp-detail">
+              <div class="emp-detail-label">Parcela</div>
+              <div class="emp-detail-value">${fmtBRL(emp.val_parcela)}</div>
+            </div>
+            <div class="emp-detail">
+              <div class="emp-detail-label">Total Pago</div>
+              <div class="emp-detail-value green">${fmtBRL(pago)}</div>
+            </div>
+            <div class="emp-detail">
+              <div class="emp-detail-label">Restante</div>
+              <div class="emp-detail-value red">${fmtBRL(Math.max(restante,0))}</div>
+            </div>
+          </div>
+
+          <span class="emp-status ${statusClass}">${statusLabel}</span>
+
+          <div class="parcelas-wrap">
+            <div class="parcelas-title" data-toggle="${emp.id}">
+              📋 Ver pagamentos registrados (${pagas})
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="parcelas-list" id="parcelas-${emp.id}" style="display:none">
+              ${(emp.pagamentos||[]).length===0
+                ? '<div style="color:var(--text3);font-size:12px;padding:8px">Nenhum pagamento registrado ainda.</div>'
+                : (emp.pagamentos||[]).map((p,i)=>`
+                    <div class="parcela-row paga">
+                      <span class="parcela-num">#${i+1}</span>
+                      <span class="parcela-venc">${fmtDate(p.data_ref)}</span>
+                      <span class="parcela-valor">${fmtBRL(p.valor)}</span>
+                      <span class="parcela-status"><span class="parcela-ok">✓ ${p.origem}</span></span>
+                    </div>`).join('')
+              }
+            </div>
+          </div>`;
+
+        card.querySelector('[data-edit]').addEventListener('click', () => openEditEmp(emp));
+        card.querySelector('[data-del]').addEventListener('click', () => deleteEmp(emp.id));
+        card.querySelector('[data-toggle]').addEventListener('click', () => {
+          const list = document.getElementById(`parcelas-${emp.id}`);
+          list.style.display = list.style.display==='none'?'flex':'none';
+          list.style.flexDirection = 'column';
+        });
+
+        grid.appendChild(card);
+      });
+    };
+
+    // RENDER PAGAMENTOS
+    const renderPagamentos = () => {
+      const sec = document.getElementById('pagamentosSection');
+      if(!pagamentosIdentificados.length) {
+        sec.innerHTML = `<p style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Nenhum pagamento identificado ainda.<br>Registre lançamentos com "PREST. EMPRESTIMO X" no Caixa, Extrato PJ ou PF.</p>`;
+        return;
+      }
+
+      sec.innerHTML = pagamentosIdentificados.map(p => {
+        const empMatch = emprestimos.find(e => p.historico.toUpperCase().includes(e.codigo.toUpperCase()));
+        return `
+          <div class="pagamento-row">
+            <div>
+              <div class="pagamento-desc">${p.historico}</div>
+              <div class="pagamento-meta">${fmtDate(p.data)} ${empMatch?'• '+empMatch.nome:''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="pagamento-origem">${p.origem}</span>
+              <span class="pagamento-valor">${fmtBRL(p.debito)}</span>
+            </div>
+          </div>`;
+      }).join('');
+    };
+
+    // SUMMARY
+    const updateSummary = () => {
+      const te = emprestimos.reduce((s,e)=>s+(parseFloat(e.valor_total)||0),0);
+      const tp = emprestimos.reduce((s,e)=>s+(e.totalPago||0),0);
+      const tr = emprestimos.reduce((s,e)=>s+Math.max(e.restante||parseFloat(e.valor_total)||0,0),0);
+      document.getElementById('totalEmprestado').textContent = fmtBRL(te);
+      document.getElementById('totalPago').textContent = fmtBRL(tp);
+      document.getElementById('totalRestante').textContent = fmtBRL(tr);
+    };
+
+    // MODAL
+    const openNewEmp = () => {
+      document.getElementById('modalEmpTitle').textContent = 'Novo Empréstimo';
+      document.getElementById('empId').value = '';
+      ['empNome','empCodigo','empValor','empParcelas','empValParcela','empCredor','empObs'].forEach(id => document.getElementById(id).value='');
+      document.getElementById('empDataInicio').value = '';
+      document.getElementById('modalEmp').classList.add('show');
+      document.getElementById('empNome').focus();
+    };
+
+    const openEditEmp = emp => {
+      document.getElementById('modalEmpTitle').textContent = 'Editar Empréstimo';
+      document.getElementById('empId').value = emp.id;
+      document.getElementById('empNome').value = emp.nome||'';
+      document.getElementById('empCodigo').value = emp.codigo||'';
+      document.getElementById('empValor').value = emp.valor_total||'';
+      document.getElementById('empParcelas').value = emp.num_parcelas||'';
+      document.getElementById('empValParcela').value = emp.val_parcela||'';
+      document.getElementById('empDataInicio').value = emp.data_inicio||'';
+      document.getElementById('empCredor').value = emp.credor||'';
+      document.getElementById('empObs').value = emp.obs||'';
+      document.getElementById('modalEmp').classList.add('show');
+    };
+
+    document.getElementById('btnCancelEmp').addEventListener('click', () => document.getElementById('modalEmp').classList.remove('show'));
+
+    document.getElementById('btnSaveEmp').addEventListener('click', async () => {
+      const id = document.getElementById('empId').value;
+      const nome = document.getElementById('empNome').value.trim().toUpperCase();
+      const codigo = document.getElementById('empCodigo').value.trim().toUpperCase();
+      const valor_total = parseBRL(document.getElementById('empValor').value);
+      const num_parcelas = parseInt(document.getElementById('empParcelas').value)||0;
+      const val_parcela = parseBRL(document.getElementById('empValParcela').value);
+      const data_inicio = document.getElementById('empDataInicio').value;
+      const credor = document.getElementById('empCredor').value.trim();
+      const obs = document.getElementById('empObs').value.trim();
+
+      if(!nome||!codigo){showToast('Preencha nome e código','error');return;}
+
+      const obj = {nome,codigo,valor_total,num_parcelas,val_parcela,data_inicio:data_inicio||null,credor,obs};
+
+      if(id) { await _sb.from('emprestimos').update(obj).eq('id',id); }
+      else { await _sb.from('emprestimos').insert(obj); }
+
+      document.getElementById('modalEmp').classList.remove('show');
+      await loadEmprestimos();
+      showToast(id?'Empréstimo atualizado!':'Empréstimo cadastrado!');
+    });
+
+    const deleteEmp = async id => {
+      if(!confirm('Excluir este empréstimo e todos os pagamentos registrados?')) return;
+      await _sb.from('emp_pagamentos').delete().eq('emprestimo_id',id);
+      await _sb.from('emprestimos').delete().eq('id',id);
+      await loadEmprestimos();
+      showToast('Empréstimo excluído!');
+    };
+
+    document.getElementById('btnNovoEmp').addEventListener('click', openNewEmp);
+
+    // INIT
+    const init = async () => {
+      const {data} = await _sb.auth.getSession();
+      if(!data.session){window.location.href='index.html';return;}
+      await loadEmprestimos();
+    };
+
+    init();
+  </script>
+</body>
+</html>
