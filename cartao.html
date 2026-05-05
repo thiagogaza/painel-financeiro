@@ -259,7 +259,7 @@
         </div>
         <div class="field-group">
           <div class="field-label">Valor (R$)</div>
-          <input type="number" class="field-input" id="inputValor" placeholder="0,00" step="0.01" min="0" />
+          <input type="text" class="field-input" id="inputValor" placeholder="0,00" inputmode="decimal" />
         </div>
         <div class="field-group">
           <div class="field-label">&nbsp;</div>
@@ -359,6 +359,15 @@
 
     // ── FORMAT ─────────────────────────────────────────────────────
     const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+    const parseBRL = v => {
+      if(!v) return 0;
+      // Accept both 1.000,00 and 1000.00 and 1000,00
+      const str = String(v).trim();
+      if(str.includes(',')) {
+        return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0;
+      }
+      return parseFloat(str) || 0;
+    };
     const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d; };
     const parseDate = raw => {
       const p = raw.split('/');
@@ -468,12 +477,12 @@
 
         const btnEdit = document.createElement('button');
         btnEdit.className = 'cartao-btn cartao-btn-edit';
-        btnEdit.textContent = '✏️ editar';
+        btnEdit.textContent = '✏️';
         btnEdit.addEventListener('click', (e) => { e.stopPropagation(); openEditCartao(c); });
 
         const btnDel = document.createElement('button');
         btnDel.className = 'cartao-btn cartao-btn-del';
-        btnDel.textContent = '✕ excluir';
+        btnDel.textContent = '✕';
         btnDel.addEventListener('click', (e) => { e.stopPropagation(); deleteCartao(c.id); });
 
         actionsDiv.appendChild(btnEdit);
@@ -635,7 +644,7 @@
       const dataRaw=document.getElementById('inputData').value.trim();
       const desc=document.getElementById('inputDesc').value.trim().toUpperCase();
       const classe=document.getElementById('inputClasse').value.trim().toUpperCase();
-      const valor=parseFloat(document.getElementById('inputValor').value)||0;
+      const valor=parseBRL(document.getElementById('inputValor').value);
       if(!dataRaw){showToast('Informe a data','error');return;}
       if(!desc){showToast('Informe a descrição','error');return;}
       if(valor<=0){showToast('Informe o valor','error');return;}
