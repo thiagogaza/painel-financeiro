@@ -242,6 +242,16 @@
           <input type="text" class="modal-input" id="empCredor" placeholder="Ex: Banco Sicredi, Familiar..." />
         </div>
         <div class="modal-field full">
+          <label class="modal-label">Conta de pagamento</label>
+          <select class="modal-input" id="empConta">
+            <option value="">— Não identificar automaticamente —</option>
+            <option value="caixa">Caixa</option>
+            <option value="extrato_pj">Extrato PJ</option>
+            <option value="extrato_pf">Extrato PF</option>
+          </select>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Define em qual conta o sistema vai buscar os pagamentos automaticamente</div>
+        </div>
+        <div class="modal-field full">
           <label class="modal-label">Observação</label>
           <input type="text" class="modal-input" id="empObs" placeholder="Observação opcional" />
         </div>
@@ -296,38 +306,33 @@
     };
 
     const loadPagamentos = async () => {
-      // Search for PREST. keywords in caixa, extrato_pj, extrato_pf
-      const [c1, c2, c3] = await Promise.all([
-        _sb.from('caixa').select('data,historico,debito').ilike('historico','%PREST%'),
-        _sb.from('extrato_pj').select('data,historico,debito').ilike('historico','%PREST%'),
-        _sb.from('extrato_pf').select('data,historico,debito').ilike('historico','%PREST%'),
-      ]);
+      const all = [];
 
-      const all = [
-        ...(c1.data||[]).map(r=>({...r,origem:'Caixa'})),
-        ...(c2.data||[]).map(r=>({...r,origem:'Extrato PJ'})),
-        ...(c3.data||[]).map(r=>({...r,origem:'Extrato PF'})),
-      ];
+      for(const emp of emprestimos) {
+        const contas = emp.conta_origem ? [emp.conta_origem] : ['caixa','extrato_pj','extrato_pf'];
+        for(const conta of contas) {
+          const {data} = await _sb.from(conta).select('data,historico,debito').ilike('historico','%PREST%');
+          if(data) {
+            const matched = data.filter(r => r.historico.toUpperCase().includes(emp.codigo.toUpperCase()));
+            matched.forEach(r => all.push({...r, origem: conta==='caixa'?'Caixa':conta==='extrato_pj'?'Extrato PJ':'Extrato PF', emprestimo_id: emp.id}));
+          }
+        }
+      }
 
       pagamentosIdentificados = all;
       renderPagamentos();
 
-      // Auto-baixa: match payments to emprestimos
+      // Auto-baixa
       for(const p of all) {
-        for(const emp of emprestimos) {
-          if(p.historico.toUpperCase().includes(emp.codigo.toUpperCase())) {
-            // Check if already registered
-            const {data:existing} = await _sb.from('emp_pagamentos').select('id').eq('emprestimo_id',emp.id).eq('historico_ref',p.historico).eq('data_ref',p.data).limit(1);
-            if(!existing||existing.length===0) {
-              await _sb.from('emp_pagamentos').insert({
-                emprestimo_id: emp.id,
-                data_ref: p.data,
-                valor: parseFloat(p.debito)||0,
-                historico_ref: p.historico,
-                origem: p.origem
-              });
-            }
-          }
+        const {data:existing} = await _sb.from('emp_pagamentos').select('id').eq('emprestimo_id',p.emprestimo_id).eq('historico_ref',p.historico).eq('data_ref',p.data).limit(1);
+        if(!existing||existing.length===0) {
+          await _sb.from('emp_pagamentos').insert({
+            emprestimo_id: p.emprestimo_id,
+            data_ref: p.data,
+            valor: parseFloat(p.debito)||0,
+            historico_ref: p.historico,
+            origem: p.origem
+          });
         }
       }
 
@@ -373,7 +378,7 @@
           <div class="emp-card-header">
             <div>
               <div class="emp-nome">${emp.nome}</div>
-              <div class="emp-codigo">Código: ${emp.codigo} ${emp.credor?'• '+emp.credor:''}</div>
+              <div class="emp-codigo">Código: ${emp.codigo} ${emp.credor?'• '+emp.credor:''} ${emp.conta_origem?'• '+( emp.conta_origem==='caixa'?'💰 Caixa':emp.conta_origem==='extrato_pj'?'🏦 PJ':'🏧 PF'):''}</div>
             </div>
             <div class="emp-actions">
               <button class="emp-btn" data-edit="${emp.id}">✏️</button>
@@ -483,6 +488,7 @@
       document.getElementById('empId').value = '';
       ['empNome','empCodigo','empValor','empParcelas','empValParcela','empCredor','empObs'].forEach(id => document.getElementById(id).value='');
       document.getElementById('empDataInicio').value = '';
+      document.getElementById('empConta').value = '';
       document.getElementById('modalEmp').classList.add('show');
       document.getElementById('empNome').focus();
     };
@@ -498,6 +504,7 @@
       document.getElementById('empDataInicio').value = emp.data_inicio||'';
       document.getElementById('empCredor').value = emp.credor||'';
       document.getElementById('empObs').value = emp.obs||'';
+      document.getElementById('empConta').value = emp.conta_origem||'';
       document.getElementById('modalEmp').classList.add('show');
     };
 
@@ -516,7 +523,8 @@
 
       if(!nome||!codigo){showToast('Preencha nome e código','error');return;}
 
-      const obj = {nome,codigo,valor_total,num_parcelas,val_parcela,data_inicio:data_inicio||null,credor,obs};
+      const conta_origem = document.getElementById('empConta').value;
+      const obj = {nome,codigo,valor_total,num_parcelas,val_parcela,data_inicio:data_inicio||null,credor,obs,conta_origem:conta_origem||null};
 
       if(id) { await _sb.from('emprestimos').update(obj).eq('id',id); }
       else { await _sb.from('emprestimos').insert(obj); }
