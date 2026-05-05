@@ -548,14 +548,31 @@
         const barClass = pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : '';
 
         return `
-          <div class="cartao-card ${selectedCartao?.id === c.id ? 'selected' : ''}" onclick="selectCartao('${c.id}')">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <div class="cartao-nome">${c.nome}</div>
-              <div style="display:flex;gap:4px">
-                <button onclick="event.stopPropagation();editCartao('${c.id}')" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:white;font-size:12px">✏️</button>
-                <button onclick="event.stopPropagation();deleteCartao('${c.id}')" style="background:rgba(248,113,113,0.25);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:#fca5a5;font-size:12px">✕</button>
+          <div class="cartao-card ${selectedCartao?.id === c.id ? 'selected' : ''}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+              <div class="cartao-nome" onclick="selectCartao('${c.id}')" style="cursor:pointer;flex:1">${c.nome}</div>
+              <div style="display:flex;gap:4px;z-index:10;position:relative">
+                <button id="btn-edit-${c.id}" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:white;font-size:12px">✏️</button>
+                <button id="btn-del-${c.id}" style="background:rgba(248,113,113,0.25);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;color:#fca5a5;font-size:12px">✕</button>
               </div>
             </div>
+            <div onclick="selectCartao('${c.id}')" style="cursor:pointer">
+              <div class="cartao-venc">Vence dia ${c.vencimento}${limite > 0 ? ' • Limite ' + formatBRL(limite) : ''}${c.cashback_pct ? ' • Cashback ' + c.cashback_pct + '%' : ''}</div>
+              <div class="cartao-total-label">Em aberto</div>
+              <div class="cartao-total">${formatBRL(aberto)}</div>
+              ${pago > 0 ? `<div class="cartao-pago">✓ ${formatBRL(pago)} pago</div>` : ''}
+              ${limite > 0 ? `
+                <div class="limite-bar-wrap">
+                  <div class="limite-bar-label">
+                    <span>${pct.toFixed(0)}% do limite</span>
+                    <span>${formatBRL(limite - aberto)} disponível</span>
+                  </div>
+                  <div class="limite-bar">
+                    <div class="limite-bar-fill ${barClass}" style="width:${pct}%"></div>
+                  </div>
+                </div>` : ''}
+            </div>
+          </div>`;
             <div class="cartao-venc">Vence dia ${c.vencimento}${limite > 0 ? ' • Limite ' + formatBRL(limite) : ''}${c.cashback_pct ? ' • Cashback ' + c.cashback_pct + '%' : ''}</div>
             <div class="cartao-total-label">Em aberto</div>
             <div class="cartao-total">${formatBRL(aberto)}</div>
@@ -578,6 +595,14 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo cartão
         </button>`;
+
+      // Attach event listeners after DOM update
+      cartoes.forEach(c => {
+        const btnEdit = document.getElementById(`btn-edit-${c.id}`);
+        const btnDel = document.getElementById(`btn-del-${c.id}`);
+        if (btnEdit) btnEdit.addEventListener('click', () => editCartao(c.id));
+        if (btnDel) btnDel.addEventListener('click', () => deleteCartao(c.id));
+      });
     }
 
     function selectCartao(id) {
