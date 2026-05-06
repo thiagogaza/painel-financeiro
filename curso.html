@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Curso Particular — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --salmon:#E07060; --cyan:#5BC8D4; --green:#34D399; --red:#F87171; --orange:#FB923C; --yellow:#FBBF24; --purple:#A78BFA; --blue:#60A5FA; --transition:0.4s cubic-bezier(0.4,0,0.2,1); }
+    body.light { --bg:#F5F2EE; --card:#FFFFFF; --card2:#FAFAFA; --text:#1A1A1A; --text2:#6B6B6B; --text3:#9A9A9A; --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.04); --shadow:0 2px 16px rgba(0,0,0,0.06); --input-bg:#F5F2EE; --toggle-bg:#E0DDD8; --row-hover:rgba(0,0,0,0.02); --header-bg:rgba(255,255,255,0.95); }
+    body.dark { --bg:#111214; --card:#1E2024; --card2:#23262B; --text:#F0EDE8; --text2:#888888; --text3:#555555; --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.03); --shadow:0 2px 16px rgba(0,0,0,0.3); --input-bg:#15171A; --toggle-bg:#2A2D32; --row-hover:rgba(255,255,255,0.03); --header-bg:rgba(30,32,36,0.95); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background var(--transition),color var(--transition); }
+    header { position:sticky; top:0; z-index:200; background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); }
+    .header-inner { max-width:1300px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .back-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; text-decoration:none; }
+    .back-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .page-title { display:flex; align-items:center; gap:10px; }
+    .page-title-icon { width:32px; height:32px; background:var(--blue); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .page-title h1 { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); }
+    .toggle-btn { width:44px; height:24px; background:var(--toggle-bg); border-radius:12px; border:none; cursor:pointer; position:relative; transition:background var(--transition); }
+    .toggle-btn::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--salmon); transition:transform var(--transition),background var(--transition); }
+    body.dark .toggle-btn::after { transform:translateX(20px); background:var(--cyan); }
+
+    main { max-width:1300px; margin:0 auto; padding:24px; }
+
+    .section-title { font-size:11px; font-weight:600; color:var(--text3); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* SUMMARY */
+    .summary-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+    @media(max-width:768px) { .summary-cards { grid-template-columns:repeat(2,1fr); } }
+    .summary-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+    .summary-card-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+    .summary-card-value { font-family:'Playfair Display',serif; font-size:20px; font-weight:500; }
+    .v-blue { color:var(--blue); } .v-green { color:var(--green); } .v-orange { color:var(--orange); } .v-yellow { color:var(--yellow); }
+
+    .btn-novo { display:inline-flex; align-items:center; gap:6px; background:var(--blue); color:white; border:none; border-radius:10px; padding:10px 20px; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; margin-bottom:20px; }
+    .btn-novo:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(96,165,250,0.3); }
+
+    /* ALUNOS GRID */
+    .alunos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; margin-bottom:28px; }
+
+    .aluno-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); transition:all var(--transition); }
+    .aluno-card.concluido { opacity:0.7; }
+
+    .aluno-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+    .aluno-avatar { width:42px; height:42px; border-radius:50%; background:var(--blue); display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:white; flex-shrink:0; margin-right:12px; }
+    .aluno-info { flex:1; }
+    .aluno-nome { font-size:15px; font-weight:600; color:var(--text); }
+    .aluno-meta { font-size:12px; color:var(--text3); margin-top:2px; }
+    .aluno-actions { display:flex; gap:6px; flex-shrink:0; }
+    .aluno-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.2s; }
+    .aluno-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .aluno-btn.del:hover { border-color:var(--red); color:var(--red); }
+    .aluno-btn.cert { background:var(--green); border-color:var(--green); color:white; font-size:11px; }
+    .aluno-btn.cert:hover { opacity:0.85; }
+
+    /* PROGRESS */
+    .aluno-progress { margin-bottom:14px; }
+    .progress-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:6px; }
+    .progress-fill { height:100%; border-radius:4px; background:var(--blue); transition:width 0.5s; }
+    .progress-fill.done { background:var(--green); }
+    .progress-fill.warning { background:var(--orange); }
+    .progress-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--text3); }
+
+    .aluno-details { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+    .detail-box { background:var(--input-bg); border-radius:8px; padding:8px 10px; }
+    .detail-label { font-size:10px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:2px; }
+    .detail-value { font-size:13px; font-weight:500; color:var(--text); }
+    .detail-value.green { color:var(--green); }
+    .detail-value.red { color:var(--red); }
+    .detail-value.blue { color:var(--blue); }
+
+    .aluno-status { display:inline-flex; align-items:center; gap:4px; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; }
+    .status-ativo { background:rgba(96,165,250,0.1); color:var(--blue); }
+    .status-concluido { background:rgba(52,211,153,0.1); color:var(--green); }
+    .status-atrasado { background:rgba(251,146,60,0.1); color:var(--orange); }
+
+    /* PAGAMENTOS DO ALUNO */
+    .pagamentos-wrap { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+    .pagamentos-toggle { font-size:11px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .pag-list { display:flex; flex-direction:column; gap:4px; }
+    .pag-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--input-bg); font-size:12px; }
+    .pag-data { color:var(--text3); width:70px; }
+    .pag-desc { color:var(--text2); flex:1; }
+    .pag-valor { color:var(--green); font-weight:600; }
+    .pag-del { background:none; border:none; cursor:pointer; color:var(--text3); font-size:11px; opacity:0; transition:opacity 0.2s; }
+    .pag-row:hover .pag-del { opacity:1; }
+    .pag-del:hover { color:var(--red); }
+
+    .btn-add-pag { display:flex; align-items:center; gap:6px; background:none; border:1px dashed var(--border); border-radius:8px; padding:6px 12px; font-size:12px; color:var(--text3); cursor:pointer; width:100%; justify-content:center; margin-top:6px; transition:all 0.2s; font-family:'DM Sans',sans-serif; }
+    .btn-add-pag:hover { border-color:var(--green); color:var(--green); }
+
+    /* CALENDÁRIO */
+    .calendar-wrap { margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+    .calendar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cal-title { font-size:12px; font-weight:600; color:var(--text2); }
+    .cal-nav { display:flex; gap:4px; }
+    .cal-nav-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:11px; color:var(--text2); transition:all 0.2s; }
+    .cal-nav-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+    .cal-day-name { text-align:center; font-size:9px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; padding:4px 0; }
+    .cal-day { text-align:center; font-size:11px; padding:4px 2px; border-radius:6px; cursor:pointer; transition:all 0.15s; color:var(--text2); min-height:28px; display:flex; align-items:center; justify-content:center; position:relative; }
+    .cal-day:hover { background:rgba(96,165,250,0.1); color:var(--blue); }
+    .cal-day.has-aula { background:rgba(96,165,250,0.15); color:var(--blue); font-weight:600; }
+    .cal-day.has-aula::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--blue); }
+    .cal-day.other-month { opacity:0.3; }
+    .cal-day.today { border:1px solid var(--blue); }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:var(--card); border-radius:20px; padding:28px; width:100%; max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto; }
+    .modal h3 { font-family:'Playfair Display',serif; font-size:18px; margin-bottom:20px; color:var(--text); }
+    .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .modal-field { }
+    .modal-field.full { grid-column:span 2; }
+    .modal-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; display:block; }
+    .modal-input { width:100%; background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:10px 14px; font-size:14px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; transition:border-color 0.2s; }
+    .modal-input:focus { border-color:var(--blue); }
+    .modal-btns { display:flex; gap:10px; margin-top:20px; }
+    .modal-save { flex:1; background:var(--blue); color:white; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+    .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:10px; padding:11px; font-size:14px; cursor:pointer; color:var(--text2); font-family:'DM Sans',sans-serif; }
+
+    /* MODAL AULA */
+    .aula-day-info { background:var(--input-bg); border-radius:10px; padding:12px; margin-bottom:16px; font-size:13px; color:var(--text2); }
+
+    /* MODAL PAGAMENTO */
+    .pag-aluno-info { background:var(--input-bg); border-radius:10px; padding:12px; margin-bottom:16px; }
+    .pag-aluno-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; }
+
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text3); background:var(--card); border:1px solid var(--border); border-radius:16px; }
+    .empty-state .empty-icon { font-size:36px; margin-bottom:12px; }
+
+    .toast { position:fixed; bottom:24px; right:24px; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; color:var(--text); box-shadow:var(--shadow); display:none; align-items:center; gap:8px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error { border-left:3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">🎓</div>
+          <h1>Curso Particular</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="summary-cards">
+      <div class="summary-card"><div class="summary-card-label">Alunos Ativos</div><div class="summary-card-value v-blue" id="totalAlunos">0</div></div>
+      <div class="summary-card"><div class="summary-card-label">Horas Realizadas</div><div class="summary-card-value v-green" id="totalHoras">0h</div></div>
+      <div class="summary-card"><div class="summary-card-label">Total Recebido</div><div class="summary-card-value v-green" id="totalRecebido">R$ 0,00</div></div>
+      <div class="summary-card"><div class="summary-card-label">A Receber</div><div class="summary-card-value v-orange" id="totalAReceber">R$ 0,00</div></div>
+    </div>
+
+    <div class="section-title">Alunos</div>
+
+    <button class="btn-novo" id="btnNovoAluno">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Novo Aluno
+    </button>
+
+    <div class="alunos-grid" id="alunosGrid">
+      <div class="empty-state"><div class="empty-icon">🎓</div><p>Carregando...</p></div>
+    </div>
+
+  </main>
+
+  <!-- MODAL ALUNO -->
+  <div class="modal-overlay" id="modalAluno">
+    <div class="modal">
+      <h3 id="modalAlunoTitle">Novo Aluno</h3>
+      <input type="hidden" id="alunoId" />
+      <div class="modal-grid">
+        <div class="modal-field full">
+          <label class="modal-label">Nome Completo</label>
+          <input type="text" class="modal-input" id="aNome" placeholder="Nome completo do aluno" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Telefone (WhatsApp)</label>
+          <input type="text" class="modal-input" id="aTelefone" placeholder="(47) 99999-9999" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Cidade</label>
+          <input type="text" class="modal-input" id="aCidade" placeholder="Blumenau" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Estado</label>
+          <input type="text" class="modal-input" id="aEstado" placeholder="SC" maxlength="2" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Curso / Módulo</label>
+          <input type="text" class="modal-input" id="aCurso" placeholder="Ex: iPhone, Android..." />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Total de Horas Combinadas</label>
+          <input type="number" class="modal-input" id="aHorasTotal" placeholder="Ex: 20" min="1" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Valor Total Combinado (R$)</label>
+          <input type="text" class="modal-input" id="aValorTotal" placeholder="Ex: 1.200,00" inputmode="decimal" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Data de Início</label>
+          <input type="date" class="modal-input" id="aDataInicio" />
+        </div>
+        <div class="modal-field full">
+          <label class="modal-label">Observação</label>
+          <input type="text" class="modal-input" id="aObs" placeholder="Observação opcional" />
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" id="btnCancelAluno">Cancelar</button>
+        <button class="modal-save" id="btnSaveAluno">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL AULA -->
+  <div class="modal-overlay" id="modalAula">
+    <div class="modal" style="max-width:400px">
+      <h3>📅 Registrar Aula</h3>
+      <input type="hidden" id="aulaAlunoId" />
+      <div class="aula-day-info" id="aulaDayInfo">—</div>
+      <div class="modal-field" style="margin-bottom:12px">
+        <label class="modal-label">Data</label>
+        <input type="date" class="modal-input" id="aulaData" />
+      </div>
+      <div class="modal-field" style="margin-bottom:12px">
+        <label class="modal-label">Horário</label>
+        <input type="time" class="modal-input" id="aulaHora" />
+      </div>
+      <div class="modal-field" style="margin-bottom:0">
+        <label class="modal-label">Duração (horas)</label>
+        <input type="number" class="modal-input" id="aulaDuracao" placeholder="Ex: 2" min="0.5" step="0.5" />
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" id="btnCancelAula">Cancelar</button>
+        <button class="modal-save" id="btnSaveAula">Registrar Aula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PAGAMENTO -->
+  <div class="modal-overlay" id="modalPag">
+    <div class="modal" style="max-width:400px">
+      <h3>💰 Registrar Pagamento</h3>
+      <input type="hidden" id="pagAlunoId" />
+      <div class="pag-aluno-info" id="pagAlunoInfo"></div>
+      <div class="modal-field" style="margin-bottom:12px">
+        <label class="modal-label">Data</label>
+        <input type="date" class="modal-input" id="pagData" />
+      </div>
+      <div class="modal-field" style="margin-bottom:12px">
+        <label class="modal-label">Valor (R$)</label>
+        <input type="text" class="modal-input" id="pagValor" placeholder="Ex: 300,00" inputmode="decimal" />
+      </div>
+      <div class="modal-field" style="margin-bottom:0">
+        <label class="modal-label">Observação</label>
+        <input type="text" class="modal-input" id="pagObs" placeholder="Ex: Adiantamento, Parcela 1..." />
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" id="btnCancelPag">Cancelar</button>
+        <button class="modal-save" id="btnSavePag" style="background:var(--green)">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _sb = createClient('https://wrfuiapognukqxxnwfcq.supabase.co','sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV');
+
+    let alunos = [];
+    let calMonths = {}; // { alunoId: { year, month } }
+
+    // THEME
+    let manualOverride = false;
+    const getSunsetHour = () => { const m=new Date().getMonth(); return m>=10||m<=2?19:m>=4&&m<=7?17:18; };
+    const getAutoTheme = () => (new Date().getHours()>=getSunsetHour()||new Date().getHours()<6)?'dark':'light';
+    const applyTheme = t => { document.body.classList.remove('light','dark'); document.body.classList.add(t); };
+    const toggleTheme = () => { manualOverride=true; applyTheme(document.body.classList.contains('dark')?'light':'dark'); };
+    applyTheme(getAutoTheme());
+    setInterval(()=>{ if(!manualOverride) applyTheme(getAutoTheme()); },60000);
+
+    // FORMAT
+    const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+    const parseBRL = v => { if(!v) return 0; const s=String(v).trim(); return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:parseFloat(s)||0; };
+    const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d; };
+    const today = () => new Date().toISOString().split('T')[0];
+
+    // TOAST
+    let toastT;
+    const showToast = (msg,type='success') => {
+      const t=document.getElementById('toast');
+      t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+      t.className=`toast show ${type}`;
+      clearTimeout(toastT);
+      toastT=setTimeout(()=>t.classList.remove('show'),3000);
+    };
+
+    // LOAD
+    const loadAlunos = async () => {
+      const {data} = await _sb.from('curso_alunos').select('*').order('nome');
+      alunos = data || [];
+
+      for(const a of alunos) {
+        const [{data:aulas},{data:pags}] = await Promise.all([
+          _sb.from('curso_aulas').select('*').eq('aluno_id',a.id).order('data'),
+          _sb.from('curso_pagamentos').select('*').eq('aluno_id',a.id).order('data')
+        ]);
+        a.aulas = aulas || [];
+        a.pagamentos = pags || [];
+        a.horasRealizadas = a.aulas.reduce((s,au)=>s+(parseFloat(au.duracao)||0),0);
+        a.totalPago = a.pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+        a.aReceber = (parseBRL(a.valor_total)||0) - a.totalPago;
+      }
+
+      renderAlunos();
+      updateSummary();
+    };
+
+    // SUMMARY
+    const updateSummary = () => {
+      const ativos = alunos.filter(a=>a.horasRealizadas<(parseFloat(a.horas_total)||0));
+      const th = alunos.reduce((s,a)=>s+a.horasRealizadas,0);
+      const tr = alunos.reduce((s,a)=>s+a.totalPago,0);
+      const tar = alunos.reduce((s,a)=>s+Math.max(a.aReceber,0),0);
+      document.getElementById('totalAlunos').textContent = ativos.length;
+      document.getElementById('totalHoras').textContent = th+'h';
+      document.getElementById('totalRecebido').textContent = fmtBRL(tr);
+      document.getElementById('totalAReceber').textContent = fmtBRL(tar);
+    };
+
+    // RENDER ALUNOS
+    const renderAlunos = () => {
+      const grid = document.getElementById('alunosGrid');
+      if(!alunos.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🎓</div><p>Nenhum aluno cadastrado ainda.</p></div>`;
+        return;
+      }
+      grid.innerHTML = '';
+      alunos.forEach(a => renderAlunoCard(a, grid));
+    };
+
+    const renderAlunoCard = (a, grid) => {
+      const horasTotal = parseFloat(a.horas_total)||0;
+      const horasFeitas = a.horasRealizadas||0;
+      const pct = horasTotal>0?Math.min((horasFeitas/horasTotal)*100,100):0;
+      const concluido = horasFeitas>=horasTotal&&horasTotal>0;
+      const fillClass = concluido?'done':pct>=80?'warning':'';
+      const valorTotal = parseBRL(a.valor_total)||0;
+      const totalPago = a.totalPago||0;
+      const aReceber = Math.max(valorTotal-totalPago,0);
+      const statusClass = concluido?'status-concluido':aReceber>valorTotal*0.5?'status-atrasado':'status-ativo';
+      const statusLabel = concluido?'✓ Concluído':aReceber===0?'✓ Pago':'● Em andamento';
+      const inicial = a.nome.charAt(0).toUpperCase();
+
+      if(!calMonths[a.id]) calMonths[a.id] = { year:new Date().getFullYear(), month:new Date().getMonth() };
+
+      const card = document.createElement('div');
+      card.className = `aluno-card ${concluido?'concluido':''}`;
+      card.id = `card-${a.id}`;
+
+      card.innerHTML = `
+        <div class="aluno-header">
+          <div style="display:flex;align-items:center">
+            <div class="aluno-avatar">${inicial}</div>
+            <div class="aluno-info">
+              <div class="aluno-nome">${a.nome}</div>
+              <div class="aluno-meta">${a.curso||''} • ${a.cidade||''}${a.estado?' - '+a.estado:''}</div>
+              <div class="aluno-meta">${a.telefone||''}</div>
+            </div>
+          </div>
+          <div class="aluno-actions">
+            <button class="aluno-btn cert" data-cert="${a.id}">📜 Certificado</button>
+            <button class="aluno-btn" data-edit="${a.id}">✏️</button>
+            <button class="aluno-btn del" data-del="${a.id}">✕</button>
+          </div>
+        </div>
+
+        <div class="aluno-progress">
+          <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+          <div class="progress-labels">
+            <span>${horasFeitas}h realizadas de ${horasTotal}h combinadas</span>
+            <span>${pct.toFixed(0)}%</span>
+          </div>
+        </div>
+
+        <div class="aluno-details">
+          <div class="detail-box">
+            <div class="detail-label">Valor Total</div>
+            <div class="detail-value">${fmtBRL(valorTotal)}</div>
+          </div>
+          <div class="detail-box">
+            <div class="detail-label">Total Pago</div>
+            <div class="detail-value green">${fmtBRL(totalPago)}</div>
+          </div>
+          <div class="detail-box">
+            <div class="detail-label">A Receber</div>
+            <div class="detail-value ${aReceber>0?'red':'green'}">${fmtBRL(aReceber)}</div>
+          </div>
+          <div class="detail-box">
+            <div class="detail-label">Horas Restantes</div>
+            <div class="detail-value blue">${Math.max(horasTotal-horasFeitas,0)}h</div>
+          </div>
+        </div>
+
+        <span class="aluno-status ${statusClass}">${statusLabel}</span>
+
+        <!-- CALENDÁRIO -->
+        <div class="calendar-wrap">
+          <div class="calendar-header">
+            <div class="cal-title" id="cal-title-${a.id}">—</div>
+            <div class="cal-nav">
+              <button class="cal-nav-btn" data-cal-prev="${a.id}">‹</button>
+              <button class="cal-nav-btn" data-cal-next="${a.id}">›</button>
+              <button class="cal-nav-btn" data-add-aula="${a.id}" style="background:var(--blue);border-color:var(--blue);color:white">+ Aula</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="cal-${a.id}"></div>
+        </div>
+
+        <!-- PAGAMENTOS -->
+        <div class="pagamentos-wrap">
+          <div class="pagamentos-toggle" data-pag-toggle="${a.id}">
+            💰 Pagamentos (${a.pagamentos.length})
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <div id="pag-list-${a.id}" style="display:none">
+            <div class="pag-list" id="pag-items-${a.id}">
+              ${a.pagamentos.length===0
+                ? '<div style="color:var(--text3);font-size:12px;padding:8px;text-align:center">Nenhum pagamento registrado.</div>'
+                : a.pagamentos.map(p=>`
+                    <div class="pag-row">
+                      <span class="pag-data">${fmtDate(p.data)}</span>
+                      <span class="pag-desc">${p.obs||'Pagamento'}</span>
+                      <span class="pag-valor">${fmtBRL(p.valor)}</span>
+                      <button class="pag-del" data-del-pag="${p.id}" data-aluno="${a.id}">✕</button>
+                    </div>`).join('')
+              }
+            </div>
+            <button class="btn-add-pag" data-add-pag="${a.id}">+ Registrar pagamento</button>
+          </div>
+        </div>`;
+
+      grid.appendChild(card);
+
+      // Events
+      card.querySelector('[data-edit]').addEventListener('click', () => openEditAluno(a));
+      card.querySelector('[data-del]').addEventListener('click', () => deleteAluno(a.id));
+      card.querySelector('[data-cert]').addEventListener('click', () => emitirCertificado(a));
+      card.querySelector('[data-add-aula]').addEventListener('click', () => openModalAula(a.id));
+      card.querySelector('[data-pag-toggle]').addEventListener('click', () => {
+        const el = document.getElementById(`pag-list-${a.id}`);
+        el.style.display = el.style.display==='none'?'block':'none';
+      });
+      card.querySelector('[data-add-pag]').addEventListener('click', () => openModalPag(a));
+      card.querySelectorAll('[data-del-pag]').forEach(btn => {
+        btn.addEventListener('click', () => deletePagamento(btn.dataset.delPag, btn.dataset.aluno));
+      });
+      card.querySelector('[data-cal-prev]').addEventListener('click', () => {
+        calMonths[a.id].month--;
+        if(calMonths[a.id].month<0){calMonths[a.id].month=11;calMonths[a.id].year--;}
+        renderCalendario(a);
+      });
+      card.querySelector('[data-cal-next]').addEventListener('click', () => {
+        calMonths[a.id].month++;
+        if(calMonths[a.id].month>11){calMonths[a.id].month=0;calMonths[a.id].year++;}
+        renderCalendario(a);
+      });
+
+      renderCalendario(a);
+    };
+
+    // CALENDÁRIO
+    const renderCalendario = (a) => {
+      const {year,month} = calMonths[a.id];
+      const titleEl = document.getElementById(`cal-title-${a.id}`);
+      const calEl = document.getElementById(`cal-${a.id}`);
+      if(!titleEl||!calEl) return;
+
+      const monthName = new Date(year,month,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+      titleEl.textContent = monthName.charAt(0).toUpperCase()+monthName.slice(1);
+
+      const aulaDates = new Set(a.aulas.map(au=>au.data));
+      const firstDay = new Date(year,month,1).getDay();
+      const daysInMonth = new Date(year,month+1,0).getDate();
+      const todayStr = today();
+
+      const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      let html = dayNames.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+
+      for(let i=0;i<firstDay;i++) html+=`<div class="cal-day other-month"></div>`;
+
+      for(let d=1;d<=daysInMonth;d++) {
+        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const hasAula = aulaDates.has(dateStr);
+        const isToday = dateStr===todayStr;
+        const aulaInfo = hasAula ? a.aulas.find(au=>au.data===dateStr) : null;
+        html+=`<div class="cal-day ${hasAula?'has-aula':''} ${isToday?'today':''}" title="${hasAula?'Aula: '+aulaInfo.duracao+'h'+(aulaInfo.hora?' às '+aulaInfo.hora:''):''}" data-date="${dateStr}" data-aluno="${a.id}">${d}</div>`;
+      }
+
+      calEl.innerHTML = html;
+      calEl.querySelectorAll('[data-date]').forEach(el => {
+        el.addEventListener('click', () => {
+          document.getElementById('aulaData').value = el.dataset.date;
+          openModalAula(el.dataset.aluno);
+        });
+      });
+    };
+
+    // MODAL ALUNO
+    const openNewAluno = () => {
+      document.getElementById('modalAlunoTitle').textContent = 'Novo Aluno';
+      document.getElementById('alunoId').value = '';
+      ['aNome','aTelefone','aCidade','aEstado','aCurso','aHorasTotal','aValorTotal','aObs'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('aDataInicio').value = today();
+      document.getElementById('modalAluno').classList.add('show');
+      document.getElementById('aNome').focus();
+    };
+
+    const openEditAluno = a => {
+      document.getElementById('modalAlunoTitle').textContent = 'Editar Aluno';
+      document.getElementById('alunoId').value = a.id;
+      document.getElementById('aNome').value = a.nome||'';
+      document.getElementById('aTelefone').value = a.telefone||'';
+      document.getElementById('aCidade').value = a.cidade||'';
+      document.getElementById('aEstado').value = a.estado||'';
+      document.getElementById('aCurso').value = a.curso||'';
+      document.getElementById('aHorasTotal').value = a.horas_total||'';
+      document.getElementById('aValorTotal').value = a.valor_total||'';
+      document.getElementById('aDataInicio').value = a.data_inicio||'';
+      document.getElementById('aObs').value = a.obs||'';
+      document.getElementById('modalAluno').classList.add('show');
+    };
+
+    document.getElementById('btnCancelAluno').addEventListener('click', ()=>document.getElementById('modalAluno').classList.remove('show'));
+    document.getElementById('btnNovoAluno').addEventListener('click', openNewAluno);
+
+    document.getElementById('btnSaveAluno').addEventListener('click', async () => {
+      const id = document.getElementById('alunoId').value;
+      const nome = document.getElementById('aNome').value.trim();
+      if(!nome){showToast('Informe o nome','error');return;}
+      const obj = {
+        nome, telefone:document.getElementById('aTelefone').value.trim(),
+        cidade:document.getElementById('aCidade').value.trim(),
+        estado:document.getElementById('aEstado').value.trim().toUpperCase(),
+        curso:document.getElementById('aCurso').value.trim(),
+        horas_total:parseFloat(document.getElementById('aHorasTotal').value)||0,
+        valor_total:parseBRL(document.getElementById('aValorTotal').value)||0,
+        data_inicio:document.getElementById('aDataInicio').value||null,
+        obs:document.getElementById('aObs').value.trim()
+      };
+      if(id) await _sb.from('curso_alunos').update(obj).eq('id',id);
+      else await _sb.from('curso_alunos').insert(obj);
+      document.getElementById('modalAluno').classList.remove('show');
+      await loadAlunos();
+      showToast(id?'Aluno atualizado!':'Aluno cadastrado!');
+    });
+
+    const deleteAluno = async id => {
+      if(!confirm('Excluir este aluno e todos os registros?')) return;
+      await Promise.all([
+        _sb.from('curso_aulas').delete().eq('aluno_id',id),
+        _sb.from('curso_pagamentos').delete().eq('aluno_id',id)
+      ]);
+      await _sb.from('curso_alunos').delete().eq('id',id);
+      await loadAlunos();
+      showToast('Aluno excluído!');
+    };
+
+    // MODAL AULA
+    const openModalAula = alunoId => {
+      document.getElementById('aulaAlunoId').value = alunoId;
+      const a = alunos.find(x=>x.id==alunoId);
+      if(!document.getElementById('aulaData').value) document.getElementById('aulaData').value = today();
+      document.getElementById('aulaDayInfo').textContent = `Aluno: ${a?.nome||''} • ${a?.horasRealizadas||0}h realizadas de ${a?.horas_total||0}h`;
+      document.getElementById('aulaHora').value = '';
+      document.getElementById('aulaDuracao').value = '2';
+      document.getElementById('modalAula').classList.add('show');
+    };
+
+    document.getElementById('btnCancelAula').addEventListener('click', ()=>document.getElementById('modalAula').classList.remove('show'));
+
+    document.getElementById('btnSaveAula').addEventListener('click', async () => {
+      const alunoId = document.getElementById('aulaAlunoId').value;
+      const data = document.getElementById('aulaData').value;
+      const hora = document.getElementById('aulaHora').value;
+      const duracao = parseFloat(document.getElementById('aulaDuracao').value)||1;
+      if(!data){showToast('Informe a data','error');return;}
+      await _sb.from('curso_aulas').insert({aluno_id:alunoId,data,hora:hora||null,duracao});
+      document.getElementById('modalAula').classList.remove('show');
+      await loadAlunos();
+      showToast('Aula registrada!');
+    });
+
+    // MODAL PAGAMENTO
+    const openModalPag = a => {
+      document.getElementById('pagAlunoId').value = a.id;
+      document.getElementById('pagData').value = today();
+      document.getElementById('pagValor').value = '';
+      document.getElementById('pagObs').value = '';
+      const aReceber = Math.max((parseBRL(a.valor_total)||0)-a.totalPago,0);
+      document.getElementById('pagAlunoInfo').innerHTML = `
+        <div class="pag-aluno-row"><span>${a.nome}</span><span style="color:var(--blue)">${a.curso||''}</span></div>
+        <div class="pag-aluno-row"><span>Total combinado</span><span>${fmtBRL(parseBRL(a.valor_total))}</span></div>
+        <div class="pag-aluno-row"><span>Já pago</span><span style="color:var(--green)">${fmtBRL(a.totalPago)}</span></div>
+        <div class="pag-aluno-row" style="font-weight:600"><span>A receber</span><span style="color:var(--red)">${fmtBRL(aReceber)}</span></div>`;
+      document.getElementById('modalPag').classList.add('show');
+      document.getElementById('pagValor').focus();
+    };
+
+    document.getElementById('btnCancelPag').addEventListener('click', ()=>document.getElementById('modalPag').classList.remove('show'));
+
+    document.getElementById('btnSavePag').addEventListener('click', async () => {
+      const alunoId = document.getElementById('pagAlunoId').value;
+      const data = document.getElementById('pagData').value;
+      const valor = parseBRL(document.getElementById('pagValor').value);
+      const obs = document.getElementById('pagObs').value.trim();
+      if(!data||valor<=0){showToast('Preencha data e valor','error');return;}
+      await _sb.from('curso_pagamentos').insert({aluno_id:alunoId,data,valor,obs});
+      document.getElementById('modalPag').classList.remove('show');
+      await loadAlunos();
+      showToast('Pagamento registrado!');
+    });
+
+    const deletePagamento = async (pagId, alunoId) => {
+      if(!confirm('Excluir este pagamento?')) return;
+      await _sb.from('curso_pagamentos').delete().eq('id',pagId);
+      await loadAlunos();
+      showToast('Pagamento excluído!');
+    };
+
+    // CERTIFICADO VIA WHATSAPP
+    const emitirCertificado = a => {
+      const horasFeitas = a.horasRealizadas||0;
+      const horasTotal = parseFloat(a.horas_total)||0;
+      if(horasFeitas<horasTotal) {
+        if(!confirm(`${a.nome} realizou apenas ${horasFeitas}h de ${horasTotal}h combinadas. Emitir certificado mesmo assim?`)) return;
+      }
+      const telefone = (a.telefone||'').replace(/\D/g,'');
+      if(!telefone){showToast('Cadastre o telefone do aluno para enviar via WhatsApp','error');return;}
+      const dataAtual = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+      const msg = encodeURIComponent(
+        `🎓 *CERTIFICADO DE CONCLUSÃO*\n\n` +
+        `Certificamos que *${a.nome}*, residente em ${a.cidade||''}${a.estado?' - '+a.estado:''}, concluiu com êxito o curso de *${a.curso||'Curso Particular'}*.\n\n` +
+        `📚 Carga horária: *${horasFeitas} horas*\n` +
+        `📅 Data de conclusão: *${dataAtual}*\n\n` +
+        `Parabéns pelo empenho e dedicação! 🏆`
+      );
+      const url = `https://wa.me/55${telefone}?text=${msg}`;
+      window.open(url,'_blank');
+      showToast('Abrindo WhatsApp para envio do certificado!');
+    };
+
+    // INIT
+    const init = async () => {
+      const {data} = await _sb.auth.getSession();
+      if(!data.session){window.location.href='index.html';return;}
+      await loadAlunos();
+    };
+
+    init();
+  </script>
+</body>
+</html>
