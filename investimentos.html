@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investimentos — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --salmon:#E07060; --cyan:#5BC8D4; --green:#34D399; --red:#F87171; --orange:#FB923C; --yellow:#FBBF24; --purple:#A78BFA; --blue:#60A5FA; --pink:#F472B6; --transition:0.4s cubic-bezier(0.4,0,0.2,1); }
+    body.light { --bg:#F5F2EE; --card:#FFFFFF; --card2:#FAFAFA; --text:#1A1A1A; --text2:#6B6B6B; --text3:#9A9A9A; --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.04); --shadow:0 2px 16px rgba(0,0,0,0.06); --input-bg:#F5F2EE; --toggle-bg:#E0DDD8; --row-hover:rgba(0,0,0,0.02); --header-bg:rgba(255,255,255,0.95); }
+    body.dark { --bg:#111214; --card:#1E2024; --card2:#23262B; --text:#F0EDE8; --text2:#888888; --text3:#555555; --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.03); --shadow:0 2px 16px rgba(0,0,0,0.3); --input-bg:#15171A; --toggle-bg:#2A2D32; --row-hover:rgba(255,255,255,0.03); --header-bg:rgba(30,32,36,0.95); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background var(--transition),color var(--transition); }
+
+    header { position:sticky; top:0; z-index:200; background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); }
+    .header-inner { max-width:1400px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .back-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; text-decoration:none; }
+    .back-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+    .page-title { display:flex; align-items:center; gap:10px; }
+    .page-title-icon { width:32px; height:32px; background:var(--cyan); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .page-title h1 { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); }
+    .toggle-btn { width:44px; height:24px; background:var(--toggle-bg); border-radius:12px; border:none; cursor:pointer; position:relative; transition:background var(--transition); }
+    .toggle-btn::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--salmon); transition:transform var(--transition),background var(--transition); }
+    body.dark .toggle-btn::after { transform:translateX(20px); background:var(--cyan); }
+
+    /* TABS */
+    .tabs-wrap { background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); overflow-x:auto; scrollbar-width:none; position:sticky; top:57px; z-index:100; }
+    .tabs-wrap::-webkit-scrollbar { display:none; }
+    .tabs-inner { max-width:1400px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:2px; }
+    .tab-btn { display:flex; align-items:center; gap:5px; padding:10px 14px; font-size:12px; font-weight:500; color:var(--text2); cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s; background:none; border-top:none; border-left:none; border-right:none; font-family:'DM Sans',sans-serif; }
+    .tab-btn:hover { color:var(--text); }
+    .tab-btn.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+
+    main { max-width:1400px; margin:0 auto; padding:24px; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* CARDS */
+    .cards-grid { display:grid; gap:12px; margin-bottom:20px; }
+    .cards-grid.c4 { grid-template-columns:repeat(4,1fr); }
+    .cards-grid.c3 { grid-template-columns:repeat(3,1fr); }
+    .cards-grid.c2 { grid-template-columns:repeat(2,1fr); }
+    @media(max-width:768px) { .cards-grid.c4,.cards-grid.c3 { grid-template-columns:repeat(2,1fr); } }
+    .stat-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+    .stat-card.highlight { border-left:3px solid var(--cyan); }
+    .stat-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+    .stat-value { font-family:'Playfair Display',serif; font-size:20px; font-weight:500; }
+    .stat-sub { font-size:11px; color:var(--text3); margin-top:4px; }
+    .v-green { color:var(--green); } .v-red { color:var(--red); } .v-cyan { color:var(--cyan); }
+    .v-yellow { color:var(--yellow); } .v-purple { color:var(--purple); } .v-orange { color:var(--orange); }
+    .v-blue { color:var(--blue); } .v-pink { color:var(--pink); }
+
+    /* SECTION */
+    .section-title { font-size:11px; font-weight:600; color:var(--text3); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* TABLE CARD */
+    .table-card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); margin-bottom:20px; }
+    .table-card-header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+    .table-card-title { font-size:13px; font-weight:600; color:var(--text2); }
+    .table-scroll { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    thead th { background:var(--card2); padding:9px 12px; font-size:10px; font-weight:600; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+    thead th.r { text-align:right; }
+    tbody tr { border-bottom:1px solid var(--border2); transition:background 0.15s; }
+    tbody tr:hover { background:var(--row-hover); }
+    tbody td { padding:9px 12px; color:var(--text2); vertical-align:middle; }
+    tbody td.r { text-align:right; }
+    tbody td.bold { font-weight:600; color:var(--text); }
+    tbody td.green { color:var(--green); font-weight:500; }
+    tbody td.red { color:var(--red); font-weight:500; }
+    tbody td.cyan { color:var(--cyan); font-weight:500; }
+    .badge { display:inline-block; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:600; }
+    .badge-green { background:rgba(52,211,153,0.1); color:var(--green); }
+    .badge-red { background:rgba(248,113,113,0.1); color:var(--red); }
+    .badge-yellow { background:rgba(251,191,36,0.1); color:var(--yellow); }
+    .badge-blue { background:rgba(96,165,250,0.1); color:var(--blue); }
+    .badge-purple { background:rgba(167,139,250,0.1); color:var(--purple); }
+    .badge-orange { background:rgba(251,146,60,0.1); color:var(--orange); }
+    .badge-cyan { background:rgba(91,200,212,0.1); color:var(--cyan); }
+
+    .action-btn { background:none; border:none; cursor:pointer; padding:3px 6px; border-radius:4px; font-size:12px; transition:all 0.2s; opacity:0; }
+    tbody tr:hover .action-btn { opacity:1; }
+    .action-btn.edit:hover { color:var(--cyan); background:rgba(91,200,212,0.1); }
+    .action-btn.del:hover { color:var(--red); background:rgba(248,113,113,0.1); }
+
+    /* FORM */
+    .add-form { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 20px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .add-form-title { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:12px; }
+    .form-grid { display:grid; gap:8px; align-items:end; }
+    .fg-2 { grid-template-columns:repeat(2,1fr); }
+    .fg-3 { grid-template-columns:repeat(3,1fr); }
+    .fg-4 { grid-template-columns:repeat(4,1fr); }
+    .fg-5 { grid-template-columns:repeat(5,1fr) auto; }
+    .fg-6 { grid-template-columns:repeat(6,1fr) auto; }
+    @media(max-width:900px) { .fg-5,.fg-6,.fg-4,.fg-3 { grid-template-columns:1fr 1fr; } }
+    .fg { display:flex; flex-direction:column; gap:4px; }
+    .fl { font-size:10px; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; }
+    .fi { background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; width:100%; transition:border-color 0.2s; }
+    .fi:focus { border-color:var(--cyan); }
+    .fi::placeholder { color:var(--text3); }
+    select.fi { cursor:pointer; }
+    .btn { border:none; border-radius:10px; padding:9px 16px; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; white-space:nowrap; transition:all 0.2s; color:white; }
+    .btn:hover { transform:translateY(-1px); }
+    .btn-cyan { background:var(--cyan); box-shadow:0 2px 8px rgba(91,200,212,0.3); }
+    .btn-green { background:var(--green); }
+    .btn-orange { background:var(--orange); }
+    .btn-purple { background:var(--purple); }
+    .btn-yellow { background:var(--yellow); }
+    .btn-blue { background:var(--blue); }
+    .btn-pink { background:var(--pink); }
+
+    /* PROJECAO */
+    .projecao-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+    @media(max-width:900px) { .projecao-grid { grid-template-columns:repeat(2,1fr); } }
+    .proj-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); text-align:center; }
+    .proj-ano { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+    .proj-val { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--cyan); }
+    .proj-delta { font-size:11px; color:var(--green); margin-top:4px; }
+
+    /* SIMULADOR */
+    .sim-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow); }
+    .sim-result { background:var(--input-bg); border-radius:12px; padding:20px; margin-top:20px; }
+    .sim-result-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+    @media(max-width:600px) { .sim-result-grid { grid-template-columns:1fr; } }
+    .sim-item { background:var(--card); border-radius:10px; padding:12px; text-align:center; border:1px solid var(--border); }
+    .sim-item-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
+    .sim-item-val { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; }
+
+    /* DATA COM badge */
+    .datacom-alert { display:inline-flex; align-items:center; gap:4px; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:6px; padding:2px 8px; font-size:10px; font-weight:600; color:var(--yellow); }
+    .datacom-past { background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red); }
+
+    /* CRIPTO EXTRA */
+    .cripto-total-extra { display:inline-flex; align-items:center; gap:6px; background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.2); border-radius:8px; padding:4px 12px; font-size:12px; color:var(--orange); font-weight:600; margin-left:12px; }
+
+    /* TOOLTIP */
+    .tip-wrap { position:relative; display:inline-flex; }
+    .tip-box { position:absolute; bottom:calc(100%+6px); left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--text2); white-space:nowrap; box-shadow:var(--shadow); display:none; z-index:300; min-width:200px; white-space:normal; line-height:1.5; }
+    .tip-wrap:hover .tip-box { display:block; }
+    .tip-btn { background:none; border:none; cursor:pointer; color:var(--text3); font-size:12px; }
+    .tip-btn:hover { color:var(--blue); }
+
+    .edit-input { background:var(--input-bg); border:1.5px solid var(--cyan); border-radius:6px; padding:4px 8px; font-size:11px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
+    .save-btn { background:var(--cyan); color:white; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer; }
+    .cancel-btn { background:none; border:1px solid var(--border); border-radius:5px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--text2); }
+
+    .empty-state { text-align:center; padding:40px; color:var(--text3); }
+    .empty-icon { font-size:32px; margin-bottom:10px; }
+
+    .toast { position:fixed; bottom:24px; right:24px; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; color:var(--text); box-shadow:var(--shadow); display:none; align-items:center; gap:8px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error { border-left:3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <a href="dashboard.html" class="back-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Dashboard
+      </a>
+      <div class="page-title">
+        <div class="page-title-icon">📈</div>
+        <h1>Investimentos</h1>
+      </div>
+    </div>
+    <button class="toggle-btn" onclick="toggleTheme()"></button>
+  </div>
+</header>
+
+<div class="tabs-wrap">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="renda-fixa">🏦 Renda Fixa</button>
+    <button class="tab-btn" data-tab="tesouro">🇧🇷 Tesouro</button>
+    <button class="tab-btn" data-tab="fiis">🏢 FIIs</button>
+    <button class="tab-btn" data-tab="acoes">📈 Ações BR</button>
+    <button class="tab-btn" data-tab="acoes-eua">🇺🇸 Ações EUA</button>
+    <button class="tab-btn" data-tab="cripto">₿ Cripto</button>
+    <button class="tab-btn" data-tab="fundos">📂 Fundos</button>
+    <button class="tab-btn" data-tab="cashback">💳 Cashback & Pontos</button>
+    <button class="tab-btn" data-tab="simulador">🧮 Simulador</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── DASHBOARD ──────────────────────────────────────────── -->
+  <div class="tab-content active" id="tab-dashboard">
+
+    <div class="cards-grid c4" style="margin-bottom:12px">
+      <div class="stat-card highlight">
+        <div class="stat-label">Patrimônio Total</div>
+        <div class="stat-value v-cyan" id="d-patrimonio">R$ 0,00</div>
+        <div class="stat-sub" id="d-patrimonio-sub">excl. cripto</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          Patrimônio + Cripto
+          <span class="cripto-total-extra" id="d-cripto-extra">₿ —</span>
+        </div>
+        <div class="stat-value v-orange" id="d-total-cripto">R$ 0,00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Proventos Estimados Mês</div>
+        <div class="stat-value v-green" id="d-proventos">R$ 0,00</div>
+        <div class="stat-sub">FIIs + Ações + JCP</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Cashback & Pontos</div>
+        <div class="stat-value v-yellow" id="d-cashback">R$ 0,00</div>
+        <div class="stat-sub">valor estimado</div>
+      </div>
+    </div>
+
+    <div class="cards-grid c4">
+      <div class="stat-card">
+        <div class="stat-label">Renda Fixa + Tesouro</div>
+        <div class="stat-value v-blue" id="d-rf">R$ 0,00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">FIIs</div>
+        <div class="stat-value v-purple" id="d-fiis">R$ 0,00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ações (BR + EUA)</div>
+        <div class="stat-value v-green" id="d-acoes">R$ 0,00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fundos</div>
+        <div class="stat-value v-pink" id="d-fundos">R$ 0,00</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:20px">Projeção Patrimonial</div>
+    <div class="projecao-grid" id="projecao-grid"></div>
+
+    <div class="section-title">Proventos a Receber — Mês Atual</div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ativo</th><th>Tipo</th><th>Data Com</th><th class="r">Provento/cota</th><th class="r">Cotas</th><th class="r">Total Estimado</th>
+          </tr></thead>
+          <tbody id="tb-proventos-mes"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RENDA FIXA ────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-renda-fixa">
+
+    <div class="add-form">
+      <div class="add-form-title">Novo investimento em renda fixa</div>
+      <div class="form-grid fg-6">
+        <div class="fg"><div class="fl">Descrição</div><input class="fi" id="rf-desc" placeholder="Ex: CDB Nubank" /></div>
+        <div class="fg"><div class="fl">Tipo</div>
+          <select class="fi" id="rf-tipo">
+            <option>CDB</option><option>LCI</option><option>LCA</option><option>LC</option><option>CRI</option><option>CRA</option><option>Debênture</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Valor Aportado (R$)</div><input class="fi" id="rf-valor" placeholder="1.000,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Taxa (%CDI ou %a.a.)</div><input class="fi" id="rf-taxa" placeholder="Ex: 112" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Indexador</div>
+          <select class="fi" id="rf-indexador">
+            <option>CDI</option><option>IPCA+</option><option>Prefixado</option><option>Selic</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Corretora/Banco</div><input class="fi" id="rf-corretora" placeholder="Nubank" /></div>
+        <div class="fg"><div class="fl">Data Início</div><input class="fi" id="rf-inicio" type="date" /></div>
+        <div class="fg"><div class="fl">Data Vencimento</div><input class="fi" id="rf-venc" type="date" /></div>
+        <div class="fg"><div class="fl">IR Isento?</div>
+          <select class="fi" id="rf-isento">
+            <option value="nao">Não (CDB, LC...)</option>
+            <option value="sim">Sim (LCI, LCA, CRI, CRA)</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:span 2"><div class="fl">Obs</div><input class="fi" id="rf-obs" placeholder="Opcional" /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-cyan" id="btnAddRf">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c3">
+      <div class="stat-card"><div class="stat-label">Total Aplicado</div><div class="stat-value v-cyan" id="rf-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Rendimento Estimado Ano</div><div class="stat-value v-green" id="rf-rend">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Vencimentos em 30 dias</div><div class="stat-value v-yellow" id="rf-venc30">0</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header"><span class="table-card-title">Meus Investimentos em Renda Fixa</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Descrição</th><th>Tipo</th><th>Indexador</th><th class="r">Taxa</th><th class="r">Valor</th><th class="r">Rendimento Est.</th><th>IR</th><th>Início</th><th>Vencimento</th><th>Corretora</th><th class="r">Dias Restantes</th><th></th>
+          </tr></thead>
+          <tbody id="tb-rf"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── TESOURO ───────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-tesouro">
+
+    <div class="add-form">
+      <div class="add-form-title">Novo Tesouro Direto</div>
+      <div class="form-grid fg-5">
+        <div class="fg"><div class="fl">Tipo</div>
+          <select class="fi" id="td-tipo">
+            <option>Tesouro Selic</option><option>Tesouro IPCA+</option><option>Tesouro IPCA+ com Juros</option><option>Tesouro Prefixado</option><option>Tesouro Prefixado com Juros</option><option>Tesouro RendA+</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Valor Aportado (R$)</div><input class="fi" id="td-valor" placeholder="1.000,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Taxa (%a.a.)</div><input class="fi" id="td-taxa" placeholder="Ex: 12,5" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Data Compra</div><input class="fi" id="td-inicio" type="date" /></div>
+        <div class="fg"><div class="fl">Vencimento</div><input class="fi" id="td-venc" type="date" /></div>
+        <div class="fg"><div class="fl">Corretora</div><input class="fi" id="td-corretora" placeholder="Rico, XP..." /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-blue" id="btnAddTd">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c3">
+      <div class="stat-card"><div class="stat-label">Total Aplicado</div><div class="stat-value v-blue" id="td-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Rendimento Est. Ano</div><div class="stat-value v-green" id="td-rend">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Vencimentos em 30d</div><div class="stat-value v-yellow" id="td-venc30">0</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header"><span class="table-card-title">Meu Tesouro Direto</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Tipo</th><th class="r">Taxa</th><th class="r">Valor</th><th class="r">Rend. Est.</th><th>Compra</th><th>Vencimento</th><th class="r">Dias</th><th>Corretora</th><th></th>
+          </tr></thead>
+          <tbody id="tb-td"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── FIIs ──────────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-fiis">
+
+    <div class="add-form">
+      <div class="add-form-title">Novo FII</div>
+      <div class="form-grid fg-6">
+        <div class="fg"><div class="fl">Ticker</div><input class="fi" id="fii-ticker" placeholder="MXRF11" style="text-transform:uppercase" /></div>
+        <div class="fg"><div class="fl">Nome</div><input class="fi" id="fii-nome" placeholder="Maxi Renda" /></div>
+        <div class="fg"><div class="fl">Setor</div>
+          <select class="fi" id="fii-setor">
+            <option>Papel</option><option>Tijolo</option><option>Híbrido</option><option>Shoppings</option><option>Logística</option><option>Escritórios</option><option>Hospitais</option><option>Residencial</option><option>Educacional</option><option>Agro</option><option>FOF</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Cotas</div><input class="fi" id="fii-cotas" placeholder="100" type="number" /></div>
+        <div class="fg"><div class="fl">Preço Médio (R$)</div><input class="fi" id="fii-pm" placeholder="9,50" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Último Provento (R$)</div><input class="fi" id="fii-provento" placeholder="0,08" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Data Com</div><input class="fi" id="fii-datacom" type="date" /></div>
+        <div class="fg"><div class="fl">Data Pagamento</div><input class="fi" id="fii-datapag" type="date" /></div>
+        <div class="fg"><div class="fl">Corretora</div><input class="fi" id="fii-corretora" placeholder="XP, Rico..." /></div>
+        <div class="fg" style="grid-column:span 2"><div class="fl">Obs</div><input class="fi" id="fii-obs" placeholder="Opcional" /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-purple" id="btnAddFii">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c4">
+      <div class="stat-card"><div class="stat-label">Total Investido</div><div class="stat-value v-purple" id="fii-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">DY Médio Carteira</div><div class="stat-value v-green" id="fii-dy">0,00%</div></div>
+      <div class="stat-card"><div class="stat-label">Proventos Mês Atual</div><div class="stat-value v-yellow" id="fii-proventos-mes">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Setores</div><div class="stat-value v-cyan" id="fii-setores">—</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title">Minha Carteira de FIIs</span>
+        <button class="btn btn-cyan" style="font-size:12px;padding:6px 12px" id="btnAtualizarFii">🔄 Atualizar Cotações</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>Setor</th><th class="r">Cotas</th><th class="r">P.Médio</th><th class="r">Cotação</th><th class="r">Patrimônio</th><th class="r">Result.</th><th class="r">DY</th><th class="r">P/VP</th><th>Data Com</th><th class="r">Provento/cota</th><th class="r">Total Mês</th><th>Corretora</th><th></th>
+          </tr></thead>
+          <tbody id="tb-fiis"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-title">Análise de Aporte — Comparativo com Selic</div>
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title">Sugestão de Aporte</span>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)">
+          Selic atual: <input class="fi" id="selic-atual" value="14.75" style="width:70px;padding:4px 8px" inputmode="decimal" />%a.a.
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th class="r">DY Anual</th><th class="r">DY Mensal</th><th class="r">Selic Equiv.</th><th>Avaliação</th><th>Sugestão</th>
+          </tr></thead>
+          <tbody id="tb-fii-analise"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── AÇÕES BR ───────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-acoes">
+
+    <div class="add-form">
+      <div class="add-form-title">Nova Ação BR</div>
+      <div class="form-grid fg-6">
+        <div class="fg"><div class="fl">Ticker</div><input class="fi" id="ac-ticker" placeholder="PETR4" style="text-transform:uppercase" /></div>
+        <div class="fg"><div class="fl">Nome</div><input class="fi" id="ac-nome" placeholder="Petrobras" /></div>
+        <div class="fg"><div class="fl">Setor</div><input class="fi" id="ac-setor" placeholder="Energia, Bancos..." /></div>
+        <div class="fg"><div class="fl">Ações</div><input class="fi" id="ac-cotas" placeholder="100" type="number" /></div>
+        <div class="fg"><div class="fl">Preço Médio (R$)</div><input class="fi" id="ac-pm" placeholder="28,50" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Último Dividendo (R$)</div><input class="fi" id="ac-div" placeholder="1,50" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Freq. Proventos</div>
+          <select class="fi" id="ac-freq">
+            <option>Mensal</option><option>Trimestral</option><option>Semestral</option><option>Anual</option><option>Irregular</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Tipo Provento</div>
+          <select class="fi" id="ac-tipo-prov">
+            <option>Dividendo</option><option>JCP</option><option>Dividendo + JCP</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Data Ex</div><input class="fi" id="ac-dataex" type="date" /></div>
+        <div class="fg"><div class="fl">Data Pagamento</div><input class="fi" id="ac-datapag" type="date" /></div>
+        <div class="fg"><div class="fl">Corretora</div><input class="fi" id="ac-corretora" placeholder="XP, Rico..." /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-green" id="btnAddAc">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c4">
+      <div class="stat-card"><div class="stat-label">Total Investido</div><div class="stat-value v-green" id="ac-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">DY Médio Carteira</div><div class="stat-value v-cyan" id="ac-dy">0,00%</div></div>
+      <div class="stat-card"><div class="stat-label">Proventos Estimados</div><div class="stat-value v-yellow" id="ac-proventos">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Resultado Total</div><div class="stat-value v-green" id="ac-resultado">R$ 0,00</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title">Minha Carteira de Ações BR</span>
+        <button class="btn btn-cyan" style="font-size:12px;padding:6px 12px" id="btnAtualizarAc">🔄 Atualizar Cotações</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>Setor</th><th class="r">Ações</th><th class="r">P.Médio</th><th class="r">Cotação</th><th class="r">Patrimônio</th><th class="r">Result.</th><th class="r">DY</th><th>Freq.</th><th>Tipo Prov.</th><th>Data Ex</th><th class="r">Div. Estimado</th><th>Corretora</th><th></th>
+          </tr></thead>
+          <tbody id="tb-acoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── AÇÕES EUA ──────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-acoes-eua">
+
+    <div class="add-form">
+      <div class="add-form-title">Nova Ação EUA</div>
+      <div class="form-grid fg-5">
+        <div class="fg"><div class="fl">Ticker</div><input class="fi" id="ae-ticker" placeholder="AAPL" style="text-transform:uppercase" /></div>
+        <div class="fg"><div class="fl">Nome</div><input class="fi" id="ae-nome" placeholder="Apple Inc." /></div>
+        <div class="fg"><div class="fl">Setor</div><input class="fi" id="ae-setor" placeholder="Tech, Finance..." /></div>
+        <div class="fg"><div class="fl">Ações</div><input class="fi" id="ae-cotas" placeholder="10" type="number" /></div>
+        <div class="fg"><div class="fl">Preço Médio (USD)</div><input class="fi" id="ae-pm" placeholder="150.00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Último Dividendo (USD)</div><input class="fi" id="ae-div" placeholder="0.25" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Freq. Proventos</div>
+          <select class="fi" id="ae-freq">
+            <option>Trimestral</option><option>Mensal</option><option>Semestral</option><option>Anual</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Corretora</div><input class="fi" id="ae-corretora" placeholder="Avenue, Passfolio..." /></div>
+        <div class="fg"><div class="fl">Câmbio USD/BRL</div><input class="fi" id="ae-cambio" placeholder="5.80" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-blue" id="btnAddAe">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c3">
+      <div class="stat-card"><div class="stat-label">Total em BRL</div><div class="stat-value v-blue" id="ae-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Total em USD</div><div class="stat-value v-cyan" id="ae-total-usd">$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Proventos Estimados Ano</div><div class="stat-value v-yellow" id="ae-proventos">R$ 0,00</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header"><span class="table-card-title">Minha Carteira Internacional</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>Setor</th><th class="r">Ações</th><th class="r">P.Médio USD</th><th class="r">Câmbio</th><th class="r">Valor BRL</th><th>Freq.</th><th class="r">Div. Estimado Ano</th><th>Corretora</th><th></th>
+          </tr></thead>
+          <tbody id="tb-acoes-eua"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── CRIPTO ─────────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-cripto">
+
+    <div class="add-form">
+      <div class="add-form-title">Nova criptomoeda</div>
+      <div class="form-grid fg-5">
+        <div class="fg"><div class="fl">Moeda (símbolo)</div><input class="fi" id="cr-simbolo" placeholder="BTC, ETH, SOL..." style="text-transform:uppercase" /></div>
+        <div class="fg"><div class="fl">Nome</div><input class="fi" id="cr-nome" placeholder="Bitcoin" /></div>
+        <div class="fg"><div class="fl">Quantidade</div><input class="fi" id="cr-qtd" placeholder="0.05" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Preço Médio (R$)</div><input class="fi" id="cr-pm" placeholder="150.000,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Corretora/App</div><input class="fi" id="cr-corretora" placeholder="Binance, Foxbit..." /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-orange" id="btnAddCr">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c3">
+      <div class="stat-card"><div class="stat-label">Total Investido</div><div class="stat-value v-orange" id="cr-total-invest">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Valor Atual</div><div class="stat-value v-green" id="cr-total-atual">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Resultado</div><div class="stat-value v-green" id="cr-resultado">R$ 0,00 (0,00%)</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title">Minha Carteira Cripto</span>
+        <button class="btn btn-orange" style="font-size:12px;padding:6px 12px" id="btnAtualizarCr">🔄 Atualizar Preços</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Moeda</th><th class="r">Quantidade</th><th class="r">P.Médio</th><th class="r">Preço Atual</th><th class="r">Total Investido</th><th class="r">Valor Atual</th><th class="r">Resultado</th><th class="r">Var%</th><th>App</th><th></th>
+          </tr></thead>
+          <tbody id="tb-cripto"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── FUNDOS ─────────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-fundos">
+
+    <div class="add-form">
+      <div class="add-form-title">Novo Fundo</div>
+      <div class="form-grid fg-5">
+        <div class="fg"><div class="fl">Nome do Fundo</div><input class="fi" id="fu-nome" placeholder="Fundo XP..." /></div>
+        <div class="fg"><div class="fl">CNPJ</div><input class="fi" id="fu-cnpj" placeholder="00.000.000/0001-00" /></div>
+        <div class="fg"><div class="fl">Tipo</div>
+          <select class="fi" id="fu-tipo">
+            <option>Multimercado</option><option>Renda Fixa</option><option>Ações</option><option>Cambial</option><option>ETF</option><option>Previdência</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Valor Aportado (R$)</div><input class="fi" id="fu-valor" placeholder="5.000,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Rentab. Declarada (%a.a.)</div><input class="fi" id="fu-rentab" placeholder="12,5" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Corretora</div><input class="fi" id="fu-corretora" placeholder="XP, BTG..." /></div>
+        <div class="fg"><div class="fl">Data Aporte</div><input class="fi" id="fu-data" type="date" /></div>
+        <div class="fg" style="grid-column:span 2"><div class="fl">Obs</div><input class="fi" id="fu-obs" placeholder="Opcional" /></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-pink" id="btnAddFu">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="cards-grid c3">
+      <div class="stat-card"><div class="stat-label">Total Aplicado</div><div class="stat-value v-pink" id="fu-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Rend. Est. Ano</div><div class="stat-value v-green" id="fu-rend">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Fundos Cadastrados</div><div class="stat-value v-cyan" id="fu-count">0</div></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header"><span class="table-card-title">Meus Fundos</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Nome</th><th>Tipo</th><th class="r">Valor</th><th class="r">Rend. Est. Ano</th><th>Data Aporte</th><th>Corretora</th><th>Obs</th><th></th>
+          </tr></thead>
+          <tbody id="tb-fundos"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── CASHBACK & PONTOS ──────────────────────────────────── -->
+  <div class="tab-content" id="tab-cashback">
+
+    <div class="cards-grid c3" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Cashback Total Estimado</div><div class="stat-value v-green" id="cb-total">R$ 0,00</div></div>
+      <div class="stat-card"><div class="stat-label">Pontos Livelo</div><div class="stat-value v-yellow" id="cb-livelo">0 pts</div></div>
+      <div class="stat-card"><div class="stat-label">Cashback Méliuz</div><div class="stat-value v-orange" id="cb-meliuz">R$ 0,00</div></div>
+    </div>
+
+    <div class="section-title">Configuração do valor dos pontos</div>
+    <div class="add-form" style="margin-bottom:20px">
+      <div class="add-form-title">Valor do milheiro de pontos</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr auto">
+        <div class="fg"><div class="fl">Livelo (R$ por 1.000 pts)</div><input class="fi" id="cfg-livelo" placeholder="Ex: 12,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Méliuz — programa</div><input class="fi" id="cfg-meliuz-prog" placeholder="Ex: Cashback direto" /></div>
+        <div class="fg"><div class="fl">&nbsp;</div></div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-yellow" id="btnSaveConfig">Salvar</button></div>
+      </div>
+    </div>
+
+    <div class="section-title">Lançamentos de Cashback e Pontos</div>
+    <div class="add-form">
+      <div class="add-form-title">Novo lançamento</div>
+      <div class="form-grid fg-5">
+        <div class="fg"><div class="fl">Data Prevista</div><input class="fi" id="cb-data" type="date" /></div>
+        <div class="fg"><div class="fl">Programa</div>
+          <select class="fi" id="cb-prog">
+            <option value="meliuz">Méliuz</option>
+            <option value="livelo">Livelo</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Descrição</div><input class="fi" id="cb-desc" placeholder="Ex: Cashback compra supermercado" /></div>
+        <div class="fg"><div class="fl">Valor (R$ ou pontos)</div><input class="fi" id="cb-valor" placeholder="0,00" inputmode="decimal" /></div>
+        <div class="fg"><div class="fl">Status</div>
+          <select class="fi" id="cb-status">
+            <option value="pendente">Pendente</option>
+            <option value="recebido">Recebido</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">&nbsp;</div><button class="btn btn-green" id="btnAddCb">+ Adicionar</button></div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-card-header"><span class="table-card-title">Histórico de Cashback & Pontos</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Programa</th><th>Descrição</th><th class="r">Valor/Pontos</th><th class="r">Valor Financeiro</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="tb-cashback"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── SIMULADOR ──────────────────────────────────────────── -->
+  <div class="tab-content" id="tab-simulador">
+
+    <div class="sim-card">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:20px;color:var(--text)">🧮 Simulador de Renda Fixa</h2>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="fg">
+          <div class="fl">Valor Inicial (R$)</div>
+          <input class="fi" id="sim-valor" placeholder="10.000,00" inputmode="decimal" />
+        </div>
+        <div class="fg">
+          <div class="fl">Taxa</div>
+          <input class="fi" id="sim-taxa" placeholder="Ex: 112" inputmode="decimal" />
+        </div>
+        <div class="fg">
+          <div class="fl">Indexador</div>
+          <select class="fi" id="sim-indexador">
+            <option value="cdi">% do CDI</option>
+            <option value="prefixado">Prefixado %a.a.</option>
+            <option value="ipca">IPCA+ %a.a.</option>
+            <option value="selic">% da Selic</option>
+          </select>
+        </div>
+        <div class="fg">
+          <div class="fl">Período (dias)</div>
+          <input class="fi" id="sim-dias" placeholder="365" type="number" />
+        </div>
+      </div>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-bottom:20px">
+        <div class="fg">
+          <div class="fl">CDI atual (%a.a.)</div>
+          <input class="fi" id="sim-cdi" value="14.65" inputmode="decimal" />
+        </div>
+        <div class="fg">
+          <div class="fl">IPCA atual (%a.a.)</div>
+          <input class="fi" id="sim-ipca" value="5.06" inputmode="decimal" />
+        </div>
+        <div class="fg">
+          <div class="fl">IR Isento?</div>
+          <select class="fi" id="sim-isento">
+            <option value="nao">Não</option>
+            <option value="sim">Sim (LCI, LCA, CRI, CRA)</option>
+          </select>
+        </div>
+        <div class="fg">
+          <div class="fl">&nbsp;</div>
+          <button class="btn btn-cyan" id="btnSimular">Calcular</button>
+        </div>
+      </div>
+
+      <div class="sim-result" id="simResult" style="display:none">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px" id="simResultTitle">—</div>
+        <div class="sim-result-grid">
+          <div class="sim-item"><div class="sim-item-label">Valor Bruto Final</div><div class="sim-item-val v-cyan" id="sim-bruto">—</div></div>
+          <div class="sim-item"><div class="sim-item-label">IR Descontado</div><div class="sim-item-val v-red" id="sim-ir">—</div></div>
+          <div class="sim-item"><div class="sim-item-label">Valor Líquido Final</div><div class="sim-item-val v-green" id="sim-liquido">—</div></div>
+          <div class="sim-item"><div class="sim-item-label">Rendimento Bruto</div><div class="sim-item-val v-cyan" id="sim-rend-bruto">—</div></div>
+          <div class="sim-item"><div class="sim-item-label">Rendimento Líquido</div><div class="sim-item-val v-green" id="sim-rend-liq">—</div></div>
+          <div class="sim-item"><div class="sim-item-label">Alíquota IR</div><div class="sim-item-val v-yellow" id="sim-aliquota">—</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:12px;padding:10px;background:var(--card2);border-radius:8px" id="sim-ir-info">—</div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const { createClient } = supabase;
+  const _sb = createClient('https://wrfuiapognukqxxnwfcq.supabase.co','sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV');
+
+  // FORMAT
+  const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+  const fmtUSD = v => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v||0);
+  const parseBRL = v => { if(!v) return 0; const s=String(v).trim(); return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:parseFloat(s)||0; };
+  const fmtPct = v => (v||0).toFixed(2).replace('.',',')+' %';
+  const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}`:d; };
+  const today = () => new Date().toISOString().split('T')[0];
+
+  // TOAST
+  let toastT;
+  const showToast = (msg,type='success') => {
+    const t=document.getElementById('toast');
+    t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+    t.className=`toast show ${type}`;
+    clearTimeout(toastT);
+    toastT=setTimeout(()=>t.classList.remove('show'),3000);
+  };
+
+  // THEME
+  let manualOverride = false;
+  const getSunsetHour = () => { const m=new Date().getMonth(); return m>=10||m<=2?19:m>=4&&m<=7?17:18; };
+  const getAutoTheme = () => (new Date().getHours()>=getSunsetHour()||new Date().getHours()<6)?'dark':'light';
+  const applyTheme = t => { document.body.classList.remove('light','dark'); document.body.classList.add(t); };
+  const toggleTheme = () => { manualOverride=true; applyTheme(document.body.classList.contains('dark')?'light':'dark'); };
+  applyTheme(getAutoTheme());
+
+  // TABS
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // DELETE HELPER
+  const deleteRow = async (table,id,reload) => {
+    if(!confirm('Excluir este registro?')) return;
+    await _sb.from(table).delete().eq('id',id);
+    await reload();
+    showToast('Excluído!');
+  };
+
+  // ── IR TABLE ──────────────────────────────────────────────────
+  const getAliquotaIR = dias => {
+    if(dias<=180) return {pct:22.5,label:'22,5% (até 180 dias)'};
+    if(dias<=360) return {pct:20,label:'20% (181 a 360 dias)'};
+    if(dias<=720) return {pct:17.5,label:'17,5% (361 a 720 dias)'};
+    return {pct:15,label:'15% (acima de 720 dias)'};
+  };
+
+  const calcRendimento = (valor, taxaPct, indexador, dias, cdi, ipca) => {
+    let taxaAnual = 0;
+    if(indexador==='cdi'||indexador==='CDI') taxaAnual = (taxaPct/100)*(cdi/100);
+    else if(indexador==='selic'||indexador==='Selic') taxaAnual = (taxaPct/100)*(cdi/100);
+    else if(indexador==='ipca'||indexador.includes('IPCA')) taxaAnual = (ipca/100)+(taxaPct/100);
+    else taxaAnual = taxaPct/100; // prefixado
+    const fator = Math.pow(1+taxaAnual, dias/365);
+    return valor*fator - valor;
+  };
+
+  // ── RENDA FIXA ────────────────────────────────────────────────
+  let rfData = [];
+
+  const loadRf = async () => {
+    const {data} = await _sb.from('inv_renda_fixa').select('*').order('created_at');
+    rfData = data||[];
+    renderRf();
+    updateDashboard();
+  };
+
+  const renderRf = () => {
+    const tb = document.getElementById('tb-rf');
+    const cdi = 14.65, ipca = 5.06;
+    let total=0, rend30=0, venc30=0;
+    const today2 = new Date();
+
+    if(!rfData.length){tb.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🏦</div><p>Nenhum investimento cadastrado.</p></div></td></tr>`;
+      document.getElementById('rf-total').textContent='R$ 0,00';
+      document.getElementById('rf-rend').textContent='R$ 0,00';
+      document.getElementById('rf-venc30').textContent='0';
+      return;
+    }
+
+    tb.innerHTML = rfData.map(r=>{
+      const valor = parseBRL(r.valor);
+      total += valor;
+      const inicio = r.data_inicio?new Date(r.data_inicio):today2;
+      const venc = r.data_venc?new Date(r.data_venc):null;
+      const diasTotais = venc?Math.max(Math.floor((venc-inicio)/(1000*60*60*24)),1):365;
+      const diasRestantes = venc?Math.max(Math.floor((venc-today2)/(1000*60*60*24)),0):365;
+      const isento = r.ir_isento==='sim';
+
+      const rendBruto = calcRendimento(valor, parseBRL(r.taxa), r.indexador||'CDI', diasTotais, cdi, ipca);
+      const ir = getAliquotaIR(diasTotais);
+      const rendLiq = isento ? rendBruto : rendBruto*(1-ir.pct/100);
+      rend30 += rendLiq;
+
+      if(diasRestantes<=30&&diasRestantes>=0) venc30++;
+
+      const vencClass = diasRestantes<=30?'red':diasRestantes<=90?'yellow':'green';
+      return `<tr id="rf-row-${r.id}">
+        <td class="bold">${r.descricao}</td>
+        <td><span class="badge badge-blue">${r.tipo||'CDB'}</span></td>
+        <td><span class="badge badge-cyan">${r.indexador||'CDI'}</span></td>
+        <td class="r">${parseBRL(r.taxa)}%</td>
+        <td class="r bold">${fmtBRL(valor)}</td>
+        <td class="r green">${fmtBRL(rendLiq)}</td>
+        <td>${isento?'<span class="badge badge-green">Isento</span>':'<span class="badge badge-yellow">'+ir.pct+'%</span>'}</td>
+        <td>${r.data_inicio?fmtDate(r.data_inicio):'—'}</td>
+        <td>${r.data_venc?fmtDate(r.data_venc):'—'}</td>
+        <td>${r.corretora||'—'}</td>
+        <td class="r ${vencClass}">${diasRestantes}d</td>
+        <td>
+          <button class="action-btn del" data-id="${r.id}">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_renda_fixa',btn.dataset.id,loadRf));
+    });
+
+    document.getElementById('rf-total').textContent=fmtBRL(total);
+    document.getElementById('rf-rend').textContent=fmtBRL(rend30);
+    document.getElementById('rf-venc30').textContent=String(venc30);
+  };
+
+  document.getElementById('btnAddRf').addEventListener('click',async()=>{
+    const obj = {
+      descricao:document.getElementById('rf-desc').value.trim(),
+      tipo:document.getElementById('rf-tipo').value,
+      valor:parseBRL(document.getElementById('rf-valor').value),
+      taxa:parseBRL(document.getElementById('rf-taxa').value),
+      indexador:document.getElementById('rf-indexador').value,
+      corretora:document.getElementById('rf-corretora').value.trim(),
+      data_inicio:document.getElementById('rf-inicio').value||null,
+      data_venc:document.getElementById('rf-venc').value||null,
+      ir_isento:document.getElementById('rf-isento').value,
+      obs:document.getElementById('rf-obs').value.trim()
+    };
+    if(!obj.descricao||!obj.valor){showToast('Preencha descrição e valor','error');return;}
+    await _sb.from('inv_renda_fixa').insert(obj);
+    ['rf-desc','rf-valor','rf-taxa','rf-corretora','rf-inicio','rf-venc','rf-obs'].forEach(id=>document.getElementById(id).value='');
+    await loadRf();
+    showToast('Adicionado!');
+  });
+
+  // ── TESOURO ───────────────────────────────────────────────────
+  let tdData = [];
+
+  const loadTd = async () => {
+    const {data} = await _sb.from('inv_tesouro').select('*').order('created_at');
+    tdData = data||[];
+    renderTd();
+    updateDashboard();
+  };
+
+  const renderTd = () => {
+    const tb = document.getElementById('tb-td');
+    const cdi=14.65, ipca=5.06;
+    let total=0, rend=0, venc30=0;
+    const today2=new Date();
+
+    if(!tdData.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🇧🇷</div><p>Nenhum Tesouro cadastrado.</p></div></td></tr>`;
+      document.getElementById('td-total').textContent='R$ 0,00';
+      document.getElementById('td-rend').textContent='R$ 0,00';
+      return;
+    }
+
+    tb.innerHTML = tdData.map(r=>{
+      const valor=parseBRL(r.valor); total+=valor;
+      const inicio=r.data_inicio?new Date(r.data_inicio):today2;
+      const venc=r.data_venc?new Date(r.data_venc):null;
+      const dias=venc?Math.max(Math.floor((venc-inicio)/(1000*60*60*24)),1):365;
+      const diasRest=venc?Math.max(Math.floor((venc-today2)/(1000*60*60*24)),0):365;
+      const rendBruto=calcRendimento(valor,parseBRL(r.taxa),r.tipo||'Selic',dias,cdi,ipca);
+      const ir=getAliquotaIR(dias);
+      const rendLiq=rendBruto*(1-ir.pct/100);
+      rend+=rendLiq;
+      if(diasRest<=30) venc30++;
+      return `<tr id="td-row-${r.id}">
+        <td class="bold">${r.tipo}</td>
+        <td class="r">${parseBRL(r.taxa)}%</td>
+        <td class="r bold">${fmtBRL(valor)}</td>
+        <td class="r green">${fmtBRL(rendLiq)}</td>
+        <td>${r.data_inicio?fmtDate(r.data_inicio):'—'}</td>
+        <td>${r.data_venc?fmtDate(r.data_venc):'—'}</td>
+        <td class="r ${diasRest<=30?'red':diasRest<=90?'yellow':'green'}">${diasRest}d</td>
+        <td>${r.corretora||'—'}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_tesouro',btn.dataset.id,loadTd));
+    });
+    document.getElementById('td-total').textContent=fmtBRL(total);
+    document.getElementById('td-rend').textContent=fmtBRL(rend);
+    document.getElementById('td-venc30').textContent=String(venc30);
+  };
+
+  document.getElementById('btnAddTd').addEventListener('click',async()=>{
+    const obj={tipo:document.getElementById('td-tipo').value,valor:parseBRL(document.getElementById('td-valor').value),taxa:parseBRL(document.getElementById('td-taxa').value),corretora:document.getElementById('td-corretora').value.trim(),data_inicio:document.getElementById('td-inicio').value||null,data_venc:document.getElementById('td-venc').value||null};
+    if(!obj.valor){showToast('Informe o valor','error');return;}
+    await _sb.from('inv_tesouro').insert(obj);
+    ['td-valor','td-taxa','td-corretora','td-inicio','td-venc'].forEach(id=>document.getElementById(id).value='');
+    await loadTd();
+    showToast('Adicionado!');
+  });
+
+  // ── FIIs ──────────────────────────────────────────────────────
+  let fiisData = [];
+  let fiiCotacoes = {};
+
+  const loadFiis = async () => {
+    const {data} = await _sb.from('inv_fiis').select('*').order('ticker');
+    fiisData = data||[];
+    renderFiis();
+    updateDashboard();
+  };
+
+  const fetchCotacao = async ticker => {
+    try {
+      const r = await fetch(`https://brapi.dev/api/quote/${ticker}?token=demo`);
+      const d = await r.json();
+      return d?.results?.[0]?.regularMarketPrice||null;
+    } catch { return null; }
+  };
+
+  const renderFiis = () => {
+    const tb = document.getElementById('tb-fiis');
+    const tbA = document.getElementById('tb-fii-analise');
+    const selic = parseBRL(document.getElementById('selic-atual').value)||14.75;
+    const today2 = new Date();
+    let total=0, dyTotal=0, proventosMes=0;
+    const setores = new Set();
+
+    if(!fiisData.length){
+      tb.innerHTML=`<tr><td colspan="14"><div class="empty-state"><div class="empty-icon">🏢</div><p>Nenhum FII cadastrado.</p></div></td></tr>`;
+      tbA.innerHTML='';
+      document.getElementById('fii-total').textContent='R$ 0,00';
+      return;
+    }
+
+    tb.innerHTML = fiisData.map(r=>{
+      const cotas=parseInt(r.cotas)||0;
+      const pm=parseBRL(r.preco_medio);
+      const cot=fiiCotacoes[r.ticker]||pm;
+      const patrim=cotas*cot;
+      const invest=cotas*pm;
+      total+=invest;
+      const result=patrim-invest;
+      const prov=parseBRL(r.ultimo_provento);
+      const dyMensal=cot>0?(prov/cot)*100:0;
+      const dyAnual=dyMensal*12;
+      dyTotal+=dyAnual;
+
+      // Check data com
+      const dc = r.data_com?new Date(r.data_com):null;
+      const dcDias = dc?Math.floor((dc-today2)/(1000*60*60*24)):null;
+      let dcBadge='';
+      if(dc){
+        if(dcDias>0&&dcDias<=10) dcBadge=`<span class="datacom-alert">⚡ ${dcDias}d p/ Data Com</span>`;
+        else if(dcDias<=0) dcBadge=`<span class="datacom-alert datacom-past">Data Com passou</span>`;
+      }
+
+      const totalMes=cotas*prov;
+      proventosMes+=totalMes;
+      if(r.setor) setores.add(r.setor);
+
+      return `<tr id="fii-row-${r.id}">
+        <td class="bold">${r.ticker}</td>
+        <td><span class="badge badge-purple">${r.setor||'—'}</span></td>
+        <td class="r">${cotas}</td>
+        <td class="r">${fmtBRL(pm)}</td>
+        <td class="r bold">${fmtBRL(cot)}</td>
+        <td class="r">${fmtBRL(patrim)}</td>
+        <td class="r ${result>=0?'green':'red'}">${result>=0?'+':''}${fmtBRL(result)}</td>
+        <td class="r cyan">${fmtPct(dyAnual)}</td>
+        <td class="r">${pm>0?((cot/pm).toFixed(2)):'—'}</td>
+        <td>${dcBadge||fmtDate(r.data_com)||'—'}</td>
+        <td class="r">${fmtBRL(prov)}</td>
+        <td class="r green">${fmtBRL(totalMes)}</td>
+        <td>${r.corretora||'—'}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_fiis',btn.dataset.id,loadFiis));
+    });
+
+    // Analise de aporte
+    tbA.innerHTML = fiisData.map(r=>{
+      const cot=fiiCotacoes[r.ticker]||parseBRL(r.preco_medio);
+      const prov=parseBRL(r.ultimo_provento);
+      const dyMensal=cot>0?(prov/cot)*100:0;
+      const dyAnual=dyMensal*12;
+      const selicMensal=selic/12;
+      const diff=dyMensal-selicMensal;
+      const ok=diff>0;
+      return `<tr>
+        <td class="bold">${r.ticker}</td>
+        <td class="r">${fmtPct(dyAnual)}</td>
+        <td class="r">${fmtPct(dyMensal)}</td>
+        <td class="r">${fmtPct(selicMensal)}</td>
+        <td>${ok?'<span class="badge badge-green">✓ Acima da Selic</span>':'<span class="badge badge-red">✕ Abaixo da Selic</span>'}</td>
+        <td>${ok?'<span style="color:var(--green);font-size:12px">✓ Pode aportar</span>':'<span style="color:var(--red);font-size:12px">Considere outras opções</span>'}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('fii-total').textContent=fmtBRL(total);
+    document.getElementById('fii-dy').textContent=fmtPct(fiisData.length?dyTotal/fiisData.length:0);
+    document.getElementById('fii-proventos-mes').textContent=fmtBRL(proventosMes);
+    document.getElementById('fii-setores').textContent=setores.size>0?Array.from(setores).slice(0,3).join(', ')+(setores.size>3?'...':''):'—';
+  };
+
+  document.getElementById('btnAtualizarFii').addEventListener('click',async()=>{
+    showToast('Atualizando cotações...');
+    for(const r of fiisData){
+      const cot=await fetchCotacao(r.ticker+'.SA');
+      if(cot) fiiCotacoes[r.ticker]=cot;
+    }
+    renderFiis();
+    showToast('Cotações atualizadas!');
+  });
+
+  document.getElementById('btnAddFii').addEventListener('click',async()=>{
+    const ticker=document.getElementById('fii-ticker').value.trim().toUpperCase();
+    const obj={ticker,nome:document.getElementById('fii-nome').value.trim(),setor:document.getElementById('fii-setor').value,cotas:parseInt(document.getElementById('fii-cotas').value)||0,preco_medio:parseBRL(document.getElementById('fii-pm').value),ultimo_provento:parseBRL(document.getElementById('fii-provento').value),data_com:document.getElementById('fii-datacom').value||null,data_pagamento:document.getElementById('fii-datapag').value||null,corretora:document.getElementById('fii-corretora').value.trim(),obs:document.getElementById('fii-obs').value.trim()};
+    if(!ticker||!obj.cotas){showToast('Preencha ticker e cotas','error');return;}
+    await _sb.from('inv_fiis').insert(obj);
+    ['fii-ticker','fii-nome','fii-cotas','fii-pm','fii-provento','fii-datacom','fii-datapag','fii-corretora','fii-obs'].forEach(id=>document.getElementById(id).value='');
+    await loadFiis();
+    showToast('FII adicionado!');
+  });
+
+  // ── AÇÕES BR ──────────────────────────────────────────────────
+  let acoesData = [];
+
+  const loadAcoes = async () => {
+    const {data} = await _sb.from('inv_acoes').select('*').order('ticker');
+    acoesData = data||[];
+    renderAcoes();
+    updateDashboard();
+  };
+
+  const renderAcoes = () => {
+    const tb = document.getElementById('tb-acoes');
+    let total=0,dy=0,proventos=0,result=0;
+
+    if(!acoesData.length){tb.innerHTML=`<tr><td colspan="14"><div class="empty-state"><div class="empty-icon">📈</div><p>Nenhuma ação cadastrada.</p></div></td></tr>`;return;}
+
+    tb.innerHTML = acoesData.map(r=>{
+      const cotas=parseInt(r.cotas)||0;
+      const pm=parseBRL(r.preco_medio);
+      const cot=parseBRL(r.cotacao_atual)||pm;
+      const patrim=cotas*cot;
+      const invest=cotas*pm;
+      total+=invest;
+      const res=patrim-invest;
+      result+=res;
+      const div=parseBRL(r.ultimo_dividendo);
+      const freqMap={Mensal:12,Trimestral:4,Semestral:2,Anual:1,Irregular:2};
+      const freq=freqMap[r.frequencia]||4;
+      const dyAnual=cot>0?(div*freq/cot)*100:0;
+      dy+=dyAnual;
+      const divAnual=cotas*div*freq;
+      proventos+=divAnual;
+
+      const dc=r.data_ex?new Date(r.data_ex):null;
+      const dcDias=dc?Math.floor((dc-new Date())/(1000*60*60*24)):null;
+      let dcBadge='';
+      if(dc&&dcDias!==null){
+        if(dcDias>0&&dcDias<=10) dcBadge=`<span class="datacom-alert">⚡ ${dcDias}d p/ Data Ex</span>`;
+        else if(dcDias<=0) dcBadge=`<span class="datacom-alert datacom-past">Data Ex passou</span>`;
+      }
+
+      return `<tr id="ac-row-${r.id}">
+        <td class="bold">${r.ticker}</td>
+        <td><span class="badge badge-green">${r.setor||'—'}</span></td>
+        <td class="r">${cotas}</td>
+        <td class="r">${fmtBRL(pm)}</td>
+        <td class="r bold">${fmtBRL(cot)}</td>
+        <td class="r">${fmtBRL(patrim)}</td>
+        <td class="r ${res>=0?'green':'red'}">${res>=0?'+':''}${fmtBRL(res)}</td>
+        <td class="r cyan">${fmtPct(dyAnual)}</td>
+        <td>${r.frequencia||'—'}</td>
+        <td><span class="badge badge-blue">${r.tipo_provento||'Dividendo'}</span></td>
+        <td>${dcBadge||fmtDate(r.data_ex)||'—'}</td>
+        <td class="r green">${fmtBRL(divAnual)}</td>
+        <td>${r.corretora||'—'}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_acoes',btn.dataset.id,loadAcoes));
+    });
+
+    document.getElementById('ac-total').textContent=fmtBRL(total);
+    document.getElementById('ac-dy').textContent=fmtPct(acoesData.length?dy/acoesData.length:0);
+    document.getElementById('ac-proventos').textContent=fmtBRL(proventos);
+    document.getElementById('ac-resultado').textContent=fmtBRL(result);
+  };
+
+  document.getElementById('btnAtualizarAc').addEventListener('click',async()=>{
+    showToast('Atualizando cotações...');
+    for(const r of acoesData){
+      const cot=await fetchCotacao(r.ticker+'.SA');
+      if(cot){ await _sb.from('inv_acoes').update({cotacao_atual:cot}).eq('id',r.id); }
+    }
+    await loadAcoes();
+    showToast('Cotações atualizadas!');
+  });
+
+  document.getElementById('btnAddAc').addEventListener('click',async()=>{
+    const ticker=document.getElementById('ac-ticker').value.trim().toUpperCase();
+    const obj={ticker,nome:document.getElementById('ac-nome').value.trim(),setor:document.getElementById('ac-setor').value.trim(),cotas:parseInt(document.getElementById('ac-cotas').value)||0,preco_medio:parseBRL(document.getElementById('ac-pm').value),ultimo_dividendo:parseBRL(document.getElementById('ac-div').value),frequencia:document.getElementById('ac-freq').value,tipo_provento:document.getElementById('ac-tipo-prov').value,data_ex:document.getElementById('ac-dataex').value||null,data_pagamento:document.getElementById('ac-datapag').value||null,corretora:document.getElementById('ac-corretora').value.trim()};
+    if(!ticker||!obj.cotas){showToast('Preencha ticker e ações','error');return;}
+    await _sb.from('inv_acoes').insert(obj);
+    ['ac-ticker','ac-nome','ac-setor','ac-cotas','ac-pm','ac-div','ac-dataex','ac-datapag','ac-corretora'].forEach(id=>document.getElementById(id).value='');
+    await loadAcoes();
+    showToast('Ação adicionada!');
+  });
+
+  // ── AÇÕES EUA ─────────────────────────────────────────────────
+  let aeData = [];
+
+  const loadAe = async () => {
+    const {data} = await _sb.from('inv_acoes_eua').select('*').order('ticker');
+    aeData = data||[];
+    renderAe();
+    updateDashboard();
+  };
+
+  const renderAe = () => {
+    const tb = document.getElementById('tb-acoes-eua');
+    let totalBrl=0,totalUsd=0,proventos=0;
+
+    if(!aeData.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🇺🇸</div><p>Nenhuma ação EUA cadastrada.</p></div></td></tr>`;return;}
+
+    tb.innerHTML = aeData.map(r=>{
+      const cotas=parseInt(r.cotas)||0;
+      const pm=parseFloat(r.preco_medio)||0;
+      const cambio=parseFloat(r.cambio)||5.8;
+      const valorBrl=cotas*pm*cambio;
+      const valorUsd=cotas*pm;
+      totalBrl+=valorBrl; totalUsd+=valorUsd;
+      const divAnual=cotas*(parseFloat(r.ultimo_dividendo)||0)*4*cambio;
+      proventos+=divAnual;
+      return `<tr id="ae-row-${r.id}">
+        <td class="bold">${r.ticker}</td>
+        <td><span class="badge badge-blue">${r.setor||'—'}</span></td>
+        <td class="r">${cotas}</td>
+        <td class="r">${fmtUSD(pm)}</td>
+        <td class="r">R$ ${cambio.toFixed(2)}</td>
+        <td class="r bold">${fmtBRL(valorBrl)}</td>
+        <td>${r.frequencia||'Trimestral'}</td>
+        <td class="r green">${fmtBRL(divAnual)}</td>
+        <td>${r.corretora||'—'}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_acoes_eua',btn.dataset.id,loadAe));
+    });
+    document.getElementById('ae-total').textContent=fmtBRL(totalBrl);
+    document.getElementById('ae-total-usd').textContent=fmtUSD(totalUsd);
+    document.getElementById('ae-proventos').textContent=fmtBRL(proventos);
+  };
+
+  document.getElementById('btnAddAe').addEventListener('click',async()=>{
+    const obj={ticker:document.getElementById('ae-ticker').value.trim().toUpperCase(),nome:document.getElementById('ae-nome').value.trim(),setor:document.getElementById('ae-setor').value.trim(),cotas:parseInt(document.getElementById('ae-cotas').value)||0,preco_medio:parseFloat(document.getElementById('ae-pm').value)||0,ultimo_dividendo:parseFloat(document.getElementById('ae-div').value)||0,frequencia:document.getElementById('ae-freq').value,corretora:document.getElementById('ae-corretora').value.trim(),cambio:parseFloat(document.getElementById('ae-cambio').value)||5.8};
+    if(!obj.ticker||!obj.cotas){showToast('Preencha ticker e ações','error');return;}
+    await _sb.from('inv_acoes_eua').insert(obj);
+    ['ae-ticker','ae-nome','ae-setor','ae-cotas','ae-pm','ae-div','ae-corretora','ae-cambio'].forEach(id=>document.getElementById(id).value='');
+    await loadAe();
+    showToast('Ação adicionada!');
+  });
+
+  // ── CRIPTO ────────────────────────────────────────────────────
+  let crData = [];
+  let crPrecos = {};
+
+  const loadCr = async () => {
+    const {data} = await _sb.from('inv_cripto').select('*').order('created_at');
+    crData = data||[];
+    renderCr();
+    updateDashboard();
+  };
+
+  const fetchCrPreco = async simbolo => {
+    try {
+      const ids = {'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','BNB':'binancecoin','ADA':'cardano','DOT':'polkadot','MATIC':'matic-network','LINK':'chainlink','AVAX':'avalanche-2','XRP':'ripple'};
+      const id = ids[simbolo.toUpperCase()]||simbolo.toLowerCase();
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=brl`);
+      const d = await r.json();
+      return d[id]?.brl||null;
+    } catch { return null; }
+  };
+
+  const renderCr = () => {
+    const tb = document.getElementById('tb-cripto');
+    let totalInvest=0,totalAtual=0;
+
+    if(!crData.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">₿</div><p>Nenhuma cripto cadastrada.</p></div></td></tr>`;return;}
+
+    tb.innerHTML = crData.map(r=>{
+      const qtd=parseFloat(r.quantidade)||0;
+      const pm=parseBRL(r.preco_medio);
+      const atual=crPrecos[r.simbolo]||pm;
+      const invest=qtd*pm;
+      const valorAtual=qtd*atual;
+      totalInvest+=invest; totalAtual+=valorAtual;
+      const result=valorAtual-invest;
+      const pct=invest>0?(result/invest)*100:0;
+      return `<tr id="cr-row-${r.id}">
+        <td class="bold">${r.simbolo} <span style="font-size:11px;color:var(--text3)">${r.nome||''}</span></td>
+        <td class="r">${qtd}</td>
+        <td class="r">${fmtBRL(pm)}</td>
+        <td class="r bold">${fmtBRL(atual)}</td>
+        <td class="r">${fmtBRL(invest)}</td>
+        <td class="r bold">${fmtBRL(valorAtual)}</td>
+        <td class="r ${result>=0?'green':'red'}">${result>=0?'+':''}${fmtBRL(result)}</td>
+        <td class="r ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(2).replace('.',',')}%</td>
+        <td>${r.corretora||'—'}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_cripto',btn.dataset.id,loadCr));
+    });
+
+    const result=totalAtual-totalInvest;
+    const pct=totalInvest>0?(result/totalInvest)*100:0;
+    document.getElementById('cr-total-invest').textContent=fmtBRL(totalInvest);
+    document.getElementById('cr-total-atual').textContent=fmtBRL(totalAtual);
+    document.getElementById('cr-resultado').textContent=`${result>=0?'+':''}${fmtBRL(result)} (${pct>=0?'+':''}${pct.toFixed(2).replace('.',',')}%)`;
+    document.getElementById('cr-resultado').className=`stat-value ${result>=0?'v-green':'v-red'}`;
+  };
+
+  document.getElementById('btnAtualizarCr').addEventListener('click',async()=>{
+    showToast('Buscando preços...');
+    for(const r of crData){
+      const p=await fetchCrPreco(r.simbolo);
+      if(p) crPrecos[r.simbolo]=p;
+    }
+    renderCr();
+    updateDashboard();
+    showToast('Preços atualizados!');
+  });
+
+  document.getElementById('btnAddCr').addEventListener('click',async()=>{
+    const obj={simbolo:document.getElementById('cr-simbolo').value.trim().toUpperCase(),nome:document.getElementById('cr-nome').value.trim(),quantidade:parseFloat(document.getElementById('cr-qtd').value)||0,preco_medio:parseBRL(document.getElementById('cr-pm').value),corretora:document.getElementById('cr-corretora').value.trim()};
+    if(!obj.simbolo||!obj.quantidade){showToast('Preencha símbolo e quantidade','error');return;}
+    await _sb.from('inv_cripto').insert(obj);
+    ['cr-simbolo','cr-nome','cr-qtd','cr-pm','cr-corretora'].forEach(id=>document.getElementById(id).value='');
+    await loadCr();
+    showToast('Cripto adicionada!');
+  });
+
+  // ── FUNDOS ────────────────────────────────────────────────────
+  let fuData = [];
+
+  const loadFu = async () => {
+    const {data} = await _sb.from('inv_fundos').select('*').order('created_at');
+    fuData = data||[];
+    renderFu();
+    updateDashboard();
+  };
+
+  const renderFu = () => {
+    const tb = document.getElementById('tb-fundos');
+    let total=0,rend=0;
+
+    if(!fuData.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📂</div><p>Nenhum fundo cadastrado.</p></div></td></tr>`;return;}
+
+    tb.innerHTML = fuData.map(r=>{
+      const valor=parseBRL(r.valor); total+=valor;
+      const rendAnual=valor*(parseBRL(r.rentabilidade)/100);
+      rend+=rendAnual;
+      return `<tr id="fu-row-${r.id}">
+        <td class="bold">${r.nome}</td>
+        <td><span class="badge badge-pink">${r.tipo||'—'}</span></td>
+        <td class="r bold">${fmtBRL(valor)}</td>
+        <td class="r green">${fmtBRL(rendAnual)}</td>
+        <td>${r.data_aporte?fmtDate(r.data_aporte):'—'}</td>
+        <td>${r.corretora||'—'}</td>
+        <td style="font-size:11px;color:var(--text3)">${r.obs||''}</td>
+        <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+      btn.addEventListener('click',()=>deleteRow('inv_fundos',btn.dataset.id,loadFu));
+    });
+    document.getElementById('fu-total').textContent=fmtBRL(total);
+    document.getElementById('fu-rend').textContent=fmtBRL(rend);
+    document.getElementById('fu-count').textContent=String(fuData.length);
+  };
+
+  document.getElementById('btnAddFu').addEventListener('click',async()=>{
+    const obj={nome:document.getElementById('fu-nome').value.trim(),cnpj:document.getElementById('fu-cnpj').value.trim(),tipo:document.getElementById('fu-tipo').value,valor:parseBRL(document.getElementById('fu-valor').value),rentabilidade:parseBRL(document.getElementById('fu-rentab').value),corretora:document.getElementById('fu-corretora').value.trim(),data_aporte:document.getElementById('fu-data').value||null,obs:document.getElementById('fu-obs').value.trim()};
+    if(!obj.nome||!obj.valor){showToast('Preencha nome e valor','error');return;}
+    await _sb.from('inv_fundos').insert(obj);
+    ['fu-nome','fu-cnpj','fu-valor','fu-rentab','fu-corretora','fu-data','fu-obs'].forEach(id=>document.getElementById(id).value='');
+    await loadFu();
+    showToast('Fundo adicionado!');
+  });
+
+  // ── CASHBACK ─────────────────────────────────────────────────
+  let cbData = [];
+  let cbConfig = {livelo_milheiro:12};
+
+  const loadCb = async () => {
+    const [{data:lancamentos},{data:cfg}] = await Promise.all([
+      _sb.from('inv_cashback').select('*').order('data',{ascending:false}),
+      _sb.from('inv_cashback_config').select('*').limit(1).maybeSingle()
+    ]);
+    cbData = lancamentos||[];
+    if(cfg){
+      cbConfig={livelo_milheiro:parseBRL(cfg.livelo_milheiro)||12};
+      document.getElementById('cfg-livelo').value=String(cbConfig.livelo_milheiro).replace('.',',');
+    }
+    renderCb();
+  };
+
+  const renderCb = () => {
+    const tb = document.getElementById('tb-cashback');
+    let totalMeliuz=0, totalLivelo=0, totalVal=0;
+
+    if(!cbData.length){tb.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💳</div><p>Nenhum lançamento.</p></div></td></tr>`;}
+    else {
+      tb.innerHTML = cbData.map(r=>{
+        const v=parseFloat(r.valor)||0;
+        const valFin = r.programa==='livelo'?(v/1000)*cbConfig.livelo_milheiro:v;
+        if(r.programa==='meliuz') totalMeliuz+=v;
+        else totalLivelo+=v;
+        totalVal+=valFin;
+        const st=r.status==='recebido'?'<span class="badge badge-green">Recebido</span>':'<span class="badge badge-yellow">Pendente</span>';
+        return `<tr id="cb-row-${r.id}">
+          <td>${r.data||'—'}</td>
+          <td><span class="badge ${r.programa==='meliuz'?'badge-orange':'badge-yellow'}">${r.programa==='meliuz'?'Méliuz':'Livelo'}</span></td>
+          <td>${r.descricao||'—'}</td>
+          <td class="r bold">${r.programa==='livelo'?v.toLocaleString('pt-BR')+' pts':fmtBRL(v)}</td>
+          <td class="r green">${fmtBRL(valFin)}</td>
+          <td>${st}</td>
+          <td><button class="action-btn del" data-id="${r.id}">✕</button></td>
+        </tr>`;
+      }).join('');
+      tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+        btn.addEventListener('click',()=>deleteRow('inv_cashback',btn.dataset.id,loadCb));
+      });
+    }
+
+    document.getElementById('cb-total').textContent=fmtBRL(totalVal);
+    document.getElementById('cb-meliuz').textContent=fmtBRL(totalMeliuz);
+    document.getElementById('cb-livelo').textContent=totalLivelo.toLocaleString('pt-BR')+' pts';
+    document.getElementById('d-cashback').textContent=fmtBRL(totalVal);
+  };
+
+  document.getElementById('btnSaveConfig').addEventListener('click',async()=>{
+    const livelo=parseBRL(document.getElementById('cfg-livelo').value);
+    await _sb.from('inv_cashback_config').upsert({id:1,livelo_milheiro:livelo},{onConflict:'id'});
+    cbConfig.livelo_milheiro=livelo;
+    renderCb();
+    showToast('Configuração salva!');
+  });
+
+  document.getElementById('btnAddCb').addEventListener('click',async()=>{
+    const obj={data:document.getElementById('cb-data').value,programa:document.getElementById('cb-prog').value,descricao:document.getElementById('cb-desc').value.trim(),valor:parseBRL(document.getElementById('cb-valor').value),status:document.getElementById('cb-status').value};
+    if(!obj.data||!obj.valor){showToast('Preencha data e valor','error');return;}
+    await _sb.from('inv_cashback').insert(obj);
+    ['cb-desc','cb-valor'].forEach(id=>document.getElementById(id).value='');
+    await loadCb();
+    showToast('Lançamento adicionado!');
+  });
+
+  // ── SIMULADOR ────────────────────────────────────────────────
+  document.getElementById('btnSimular').addEventListener('click',()=>{
+    const valor=parseBRL(document.getElementById('sim-valor').value);
+    const taxa=parseBRL(document.getElementById('sim-taxa').value);
+    const indexador=document.getElementById('sim-indexador').value;
+    const dias=parseInt(document.getElementById('sim-dias').value)||365;
+    const cdi=parseFloat(document.getElementById('sim-cdi').value)||14.65;
+    const ipca=parseFloat(document.getElementById('sim-ipca').value)||5.06;
+    const isento=document.getElementById('sim-isento').value==='sim';
+
+    if(!valor||!taxa){showToast('Preencha valor e taxa','error');return;}
+
+    let taxaAnual=0;
+    if(indexador==='cdi') taxaAnual=(taxa/100)*(cdi/100);
+    else if(indexador==='selic') taxaAnual=(taxa/100)*(cdi/100);
+    else if(indexador==='ipca') taxaAnual=(ipca/100)+(taxa/100);
+    else taxaAnual=taxa/100;
+
+    const fator=Math.pow(1+taxaAnual,dias/365);
+    const valorBruto=valor*fator;
+    const rendBruto=valorBruto-valor;
+    const ir=getAliquotaIR(dias);
+    const irVal=isento?0:rendBruto*(ir.pct/100);
+    const rendLiq=rendBruto-irVal;
+    const valorLiq=valor+rendLiq;
+
+    const indexMap={cdi:`${taxa}% do CDI (${cdi}%a.a.)`,selic:`${taxa}% da Selic`,ipca:`IPCA+ ${taxa}%a.a.`,prefixado:`${taxa}%a.a. prefixado`};
+
+    document.getElementById('simResultTitle').textContent=`${fmtBRL(valor)} aplicado por ${dias} dias a ${indexMap[indexador]}`;
+    document.getElementById('sim-bruto').textContent=fmtBRL(valorBruto);
+    document.getElementById('sim-ir').textContent=isento?'Isento':fmtBRL(irVal);
+    document.getElementById('sim-liquido').textContent=fmtBRL(valorLiq);
+    document.getElementById('sim-rend-bruto').textContent=`+${fmtBRL(rendBruto)} (+${((rendBruto/valor)*100).toFixed(2).replace('.',',')}%)`;
+    document.getElementById('sim-rend-liq').textContent=`+${fmtBRL(rendLiq)} (+${((rendLiq/valor)*100).toFixed(2).replace('.',',')}%)`;
+    document.getElementById('sim-aliquota').textContent=isento?'Isento':ir.label;
+    document.getElementById('sim-ir-info').textContent=isento?'✓ Isento de IR (LCI, LCA, CRI ou CRA)':`IR regressivo: ${ir.label}. Quanto mais tempo, menor o IR. Acima de 720 dias a alíquota é de apenas 15%.`;
+    document.getElementById('simResult').style.display='block';
+  });
+
+  // ── DASHBOARD ────────────────────────────────────────────────
+  const updateDashboard = () => {
+    // Renda fixa + Tesouro
+    const totalRf = rfData.reduce((s,r)=>s+parseBRL(r.valor),0);
+    const totalTd = tdData.reduce((s,r)=>s+parseBRL(r.valor),0);
+    // FIIs
+    const totalFiis = fiisData.reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
+    // Ações
+    const totalAcoes = acoesData.reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
+    const totalAe = aeData.reduce((s,r)=>s+(parseInt(r.cotas)||0)*(parseFloat(r.preco_medio)||0)*(parseFloat(r.cambio)||5.8),0);
+    // Fundos
+    const totalFu = fuData.reduce((s,r)=>s+parseBRL(r.valor),0);
+    // Cripto
+    const totalCrInvest = crData.reduce((s,r)=>s+(parseFloat(r.quantidade)||0)*parseBRL(r.preco_medio),0);
+    const totalCrAtual = crData.reduce((s,r)=>{ const atual=crPrecos[r.simbolo]||parseBRL(r.preco_medio); return s+(parseFloat(r.quantidade)||0)*atual; },0);
+
+    const patrimonioSemCripto = totalRf+totalTd+totalFiis+totalAcoes+totalAe+totalFu;
+    const patrimonioTotal = patrimonioSemCripto+totalCrAtual;
+
+    document.getElementById('d-patrimonio').textContent=fmtBRL(patrimonioSemCripto);
+    document.getElementById('d-total-cripto').textContent=fmtBRL(patrimonioTotal);
+    document.getElementById('d-cripto-extra').textContent=`₿ ${fmtBRL(totalCrAtual)}`;
+    document.getElementById('d-rf').textContent=fmtBRL(totalRf+totalTd);
+    document.getElementById('d-fiis').textContent=fmtBRL(totalFiis);
+    document.getElementById('d-acoes').textContent=fmtBRL(totalAcoes+totalAe);
+    document.getElementById('d-fundos').textContent=fmtBRL(totalFu);
+
+    // Proventos mês
+    const mesAtual = new Date().getMonth()+1;
+    const provFiis = fiisData.reduce((s,r)=>{
+      const dp=r.data_pagamento?new Date(r.data_pagamento).getMonth()+1:mesAtual;
+      return dp===mesAtual?s+(parseInt(r.cotas)||0)*parseBRL(r.ultimo_provento):s;
+    },0);
+    const provAcoes = acoesData.reduce((s,r)=>{
+      const dp=r.data_pagamento?new Date(r.data_pagamento).getMonth()+1:0;
+      const freqMap={Mensal:12,Trimestral:4,Semestral:2,Anual:1,Irregular:2};
+      const freq=freqMap[r.frequencia]||4;
+      if(r.frequencia==='Mensal'||dp===mesAtual) return s+(parseInt(r.cotas)||0)*parseBRL(r.ultimo_dividendo);
+      return s;
+    },0);
+    document.getElementById('d-proventos').textContent=fmtBRL(provFiis+provAcoes);
+
+    // Proventos tabela
+    const tbProv = document.getElementById('tb-proventos-mes');
+    const allProv = [
+      ...fiisData.map(r=>({ticker:r.ticker,tipo:'FII',datacom:r.data_com,prov:parseBRL(r.ultimo_provento),cotas:parseInt(r.cotas)||0})),
+      ...acoesData.filter(r=>r.frequencia==='Mensal'||(r.data_pagamento&&new Date(r.data_pagamento).getMonth()+1===mesAtual)).map(r=>({ticker:r.ticker,tipo:r.tipo_provento||'Dividendo',datacom:r.data_ex,prov:parseBRL(r.ultimo_dividendo),cotas:parseInt(r.cotas)||0}))
+    ];
+    if(!allProv.length) tbProv.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Nenhum provento estimado para este mês.</td></tr>`;
+    else tbProv.innerHTML=allProv.map(p=>`<tr><td class="bold">${p.ticker}</td><td>${p.tipo}</td><td>${p.datacom?fmtDate(p.datacom):'—'}</td><td class="r">${fmtBRL(p.prov)}</td><td class="r">${p.cotas}</td><td class="r green">${fmtBRL(p.prov*p.cotas)}</td></tr>`).join('');
+
+    // Projeção
+    renderProjecao(patrimonioSemCripto);
+  };
+
+  const renderProjecao = (base) => {
+    const taxaMedia = 0.12; // 12% ao ano estimado
+    const grid = document.getElementById('projecao-grid');
+    grid.innerHTML = [1,2,3,4,5].map(anos=>{
+      const val = base*Math.pow(1+taxaMedia,anos);
+      const delta = val-base;
+      return `<div class="proj-card">
+        <div class="proj-ano">${anos} ano${anos>1?'s':''}</div>
+        <div class="proj-val">${fmtBRL(val)}</div>
+        <div class="proj-delta">+${fmtBRL(delta)}</div>
+      </div>`;
+    }).join('');
+  };
+
+  // ── INIT ──────────────────────────────────────────────────────
+  const init = async () => {
+    const {data}=await _sb.auth.getSession();
+    if(!data.session){window.location.href='index.html';return;}
+    document.getElementById('cb-data').value=today();
+    document.getElementById('rf-inicio').value=today();
+    document.getElementById('td-inicio').value=today();
+    document.getElementById('fu-data').value=today();
+    await Promise.all([loadRf(),loadTd(),loadFiis(),loadAcoes(),loadAe(),loadCr(),loadFu(),loadCb()]);
+  };
+
+  init();
+</script>
+</body>
+</html>
