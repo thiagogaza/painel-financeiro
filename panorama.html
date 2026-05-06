@@ -247,6 +247,21 @@
       </div>
     </div>
 
+    <div class="section-label">Faturamento Mensal — Vendas · Serviços · Compras</div>
+    <div style="overflow-x:auto;margin-bottom:20px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);">
+        <thead>
+          <tr>
+            <th style="background:var(--card2);padding:10px 14px;font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;text-align:left;border-bottom:1px solid var(--border);position:sticky;left:0;min-width:120px;">Tipo</th>
+            <th id="vsc-head"></th>
+            <th style="background:rgba(52,211,153,0.06);color:var(--green);padding:10px 14px;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;text-align:right;border-bottom:1px solid var(--border);">TOTAL</th>
+            <th style="background:rgba(251,146,60,0.06);color:var(--orange);padding:10px 14px;font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;text-align:right;border-bottom:1px solid var(--border);">MÉDIA</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaVSC"></tbody>
+      </table>
+    </div>
+
     <div class="section-label">Loja — Visão Anual por Classe</div>
     <div class="table-anual">
       <div class="table-anual-header">
@@ -644,7 +659,29 @@
       {label:'Custos',data:custoTotalMes,backgroundColor:'rgba(248,113,113,0.7)',borderRadius:6}
     ]);
 
-    // Tabela
+    // Tabela Vendas / Serviços / Compras
+    const vscRows = [
+      {label:'🛍️ Vendas', data:vendasMes, color:'var(--green)'},
+      {label:'🔧 Serviços', data:servicosMes, color:'var(--cyan)'},
+      {label:'🛒 Compras', data:comprasMes, color:'var(--red)'},
+      {label:'📦 Custos (produtos)', data:custosMes, color:'var(--orange)'},
+    ];
+    const tVSC = document.getElementById('tabelaVSC');
+    const hVSC = document.getElementById('vsc-head');
+    if(hVSC) hVSC.outerHTML = MESES.map(m=>`<th style="background:var(--card2);padding:10px 14px;font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;text-align:right;border-bottom:1px solid var(--border);">${m}</th>`).join('');
+    if(tVSC) tVSC.innerHTML = vscRows.map(row=>{
+      const total=row.data.reduce((s,v)=>s+v,0);
+      const nonZero=row.data.filter(v=>v>0).length;
+      const media=nonZero>0?total/nonZero:0;
+      return `<tr style="border-bottom:1px solid var(--border2)">
+        <td style="padding:10px 14px;font-weight:600;color:${row.color};position:sticky;left:0;background:var(--card)">${row.label}</td>
+        ${row.data.map(v=>`<td style="padding:9px 14px;text-align:right;color:${v>0?'var(--text)':'var(--text3)'};font-variant-numeric:tabular-nums">${v>0?fmtBRL(v):'—'}</td>`).join('')}
+        <td style="padding:9px 14px;text-align:right;color:var(--green);font-weight:600;background:rgba(52,211,153,0.03)">${total>0?fmtBRL(total):'—'}</td>
+        <td style="padding:9px 14px;text-align:right;color:var(--orange);background:rgba(251,146,60,0.03)">${media>0?fmtBRL(media):'—'}</td>
+      </tr>`;
+    }).join('');
+
+    // Tabela classes
     const topClasses=Object.keys(classeMap).sort((a,b)=>classeMap[b].reduce((s,v)=>s+v,0)-classeMap[a].reduce((s,v)=>s+v,0));
     buildAnnualTable('tabelaLojaHead','tabelaLojaBody',topClasses,classeMap,'Classe');
 
