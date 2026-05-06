@@ -262,12 +262,23 @@
     .module-card.pessoal { --card-accent: #A78BFA; --card-accent-light: rgba(167,139,250,0.3); }
     .module-card.veiculos { --card-accent: #34D399; --card-accent-light: rgba(52,211,153,0.3); }
     .module-card.curso { --card-accent: #60A5FA; --card-accent-light: rgba(96,165,250,0.3); }
+    .module-card.panorama { --card-accent: #2DD4BF; --card-accent-light: rgba(45,212,191,0.3); }
+
+    .module-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px; font-size: 22px;
+      transition: transform 0.3s;
+    }
+
+    .module-card:hover .module-icon { transform: scale(1.1); }
 
     .loja .module-icon { background: rgba(224,112,96,0.12); }
     .investimentos .module-icon { background: rgba(91,200,212,0.12); }
     .pessoal .module-icon { background: rgba(167,139,250,0.12); }
     .veiculos .module-icon { background: rgba(52,211,153,0.12); }
     .curso .module-icon { background: rgba(96,165,250,0.12); }
+    .panorama .module-icon { background: rgba(45,212,191,0.12); }
 
     .module-name {
       font-family: 'Playfair Display', serif;
@@ -387,6 +398,17 @@
 
     <!-- MODULES -->
     <div class="modules-grid">
+
+      <a href="panorama.html" class="module-card panorama">
+        <div class="module-icon">🔭</div>
+        <div class="module-name">Panorama</div>
+        <div class="module-desc">Visão geral com gráficos, relatórios e análise completa de todos os módulos.</div>
+        <div class="module-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </a>
 
       <a href="loja.html" class="module-card loja">
         <div class="module-icon">🏪</div>
