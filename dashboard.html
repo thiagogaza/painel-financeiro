@@ -261,20 +261,13 @@
     .module-card.investimentos { --card-accent: var(--cyan); --card-accent-light: rgba(91,200,212,0.3); }
     .module-card.pessoal { --card-accent: #A78BFA; --card-accent-light: rgba(167,139,250,0.3); }
     .module-card.veiculos { --card-accent: #34D399; --card-accent-light: rgba(52,211,153,0.3); }
-
-    .module-icon {
-      width: 48px; height: 48px; border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 20px; font-size: 22px;
-      transition: transform 0.3s;
-    }
-
-    .module-card:hover .module-icon { transform: scale(1.1); }
+    .module-card.curso { --card-accent: #60A5FA; --card-accent-light: rgba(96,165,250,0.3); }
 
     .loja .module-icon { background: rgba(224,112,96,0.12); }
     .investimentos .module-icon { background: rgba(91,200,212,0.12); }
     .pessoal .module-icon { background: rgba(167,139,250,0.12); }
     .veiculos .module-icon { background: rgba(52,211,153,0.12); }
+    .curso .module-icon { background: rgba(96,165,250,0.12); }
 
     .module-name {
       font-family: 'Playfair Display', serif;
@@ -432,6 +425,17 @@
         <div class="module-icon">🚗</div>
         <div class="module-name">Veículos</div>
         <div class="module-desc">Controle de gastos do carro e bicicleta elétrica, incluindo cálculo de kWh.</div>
+        <div class="module-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </a>
+
+      <a href="curso.html" class="module-card curso">
+        <div class="module-icon">🎓</div>
+        <div class="module-name">Curso Particular</div>
+        <div class="module-desc">Alunos, calendário de aulas, pagamentos e emissão de certificados.</div>
         <div class="module-arrow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7"/>
