@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pessoal — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --salmon:#E07060; --cyan:#5BC8D4; --green:#34D399; --red:#F87171; --orange:#FB923C; --yellow:#FBBF24; --purple:#A78BFA; --blue:#60A5FA; --transition:0.4s cubic-bezier(0.4,0,0.2,1); }
+    body.light { --bg:#F5F2EE; --card:#FFFFFF; --card2:#FAFAFA; --text:#1A1A1A; --text2:#6B6B6B; --text3:#9A9A9A; --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.04); --shadow:0 2px 16px rgba(0,0,0,0.06); --input-bg:#F5F2EE; --toggle-bg:#E0DDD8; --row-hover:rgba(0,0,0,0.025); --header-bg:rgba(255,255,255,0.95); }
+    body.dark { --bg:#111214; --card:#1E2024; --card2:#23262B; --text:#F0EDE8; --text2:#888888; --text3:#555555; --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.03); --shadow:0 2px 16px rgba(0,0,0,0.3); --input-bg:#15171A; --toggle-bg:#2A2D32; --row-hover:rgba(255,255,255,0.03); --header-bg:rgba(30,32,36,0.95); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background var(--transition),color var(--transition); }
+
+    header { position:sticky; top:0; z-index:200; background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); }
+    .header-inner { max-width:1400px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .back-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; text-decoration:none; }
+    .back-btn:hover { border-color:var(--purple); color:var(--purple); }
+    .page-title { display:flex; align-items:center; gap:10px; }
+    .page-title-icon { width:32px; height:32px; background:var(--purple); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .page-title h1 { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); }
+    .toggle-btn { width:44px; height:24px; background:var(--toggle-bg); border-radius:12px; border:none; cursor:pointer; position:relative; transition:background var(--transition); }
+    .toggle-btn::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--salmon); transition:transform var(--transition),background var(--transition); }
+    body.dark .toggle-btn::after { transform:translateX(20px); background:var(--cyan); }
+
+    main { max-width:1400px; margin:0 auto; padding:24px; }
+
+    /* YEAR NAV */
+    .year-nav { display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 20px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .year-nav-left { display:flex; align-items:center; gap:12px; }
+    .year-arrow { width:32px; height:32px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text2); transition:all 0.2s; }
+    .year-arrow:hover { border-color:var(--purple); color:var(--purple); }
+    .year-arrow svg { width:14px; height:14px; }
+    .year-display { font-family:'Playfair Display',serif; font-size:22px; font-weight:500; color:var(--text); min-width:80px; text-align:center; }
+    .year-badge { font-size:11px; color:var(--purple); background:rgba(167,139,250,0.1); border-radius:20px; padding:3px 10px; }
+
+    /* SUMMARY TOP */
+    .summary-top { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+    @media(max-width:600px) { .summary-top { grid-template-columns:1fr; } }
+    .sum-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+    .sum-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+    .sum-value { font-family:'Playfair Display',serif; font-size:22px; font-weight:500; }
+    .v-purple { color:var(--purple); } .v-orange { color:var(--orange); } .v-green { color:var(--green); }
+
+    /* MANUAL LAUNCH */
+    .add-form { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 20px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .add-form-title { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:12px; }
+    .form-fields { display:grid; grid-template-columns:90px 120px 1fr 160px auto; gap:8px; align-items:end; }
+    @media(max-width:900px) { .form-fields { grid-template-columns:1fr 1fr; } }
+    .field-group { display:flex; flex-direction:column; gap:4px; }
+    .field-label { font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; }
+    .field-input { background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; width:100%; transition:border-color 0.2s; }
+    .field-input:focus { border-color:var(--purple); }
+    .field-input::placeholder { color:var(--text3); }
+    select.field-input { cursor:pointer; }
+    .btn-add { background:var(--purple); color:white; border:none; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+    .btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(167,139,250,0.3); }
+
+    /* MAIN TABLE */
+    .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); margin-bottom:20px; }
+    .table-header-bar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); }
+    .table-header-bar h2 { font-size:13px; font-weight:600; color:var(--text2); }
+    .table-scroll { overflow-x:auto; }
+
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    thead th { background:var(--card2); padding:10px 12px; font-size:10px; font-weight:600; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+    thead th:first-child { text-align:left; min-width:150px; }
+    thead th.total-col { color:var(--purple); background:rgba(167,139,250,0.05); }
+    thead th.media-col { color:var(--orange); background:rgba(251,146,60,0.05); }
+
+    tbody tr { border-bottom:1px solid var(--border2); transition:background 0.15s; cursor:pointer; }
+    tbody tr:hover { background:var(--row-hover); }
+    tbody tr.total-row { border-top:2px solid var(--border); background:var(--card2); font-weight:600; cursor:default; }
+    tbody tr.total-row:hover { background:var(--card2); }
+
+    tbody td { padding:9px 12px; color:var(--text2); text-align:right; vertical-align:middle; }
+    tbody td:first-child { text-align:left; color:var(--text); font-weight:500; }
+    tbody td.zero { color:var(--text3); }
+    tbody td.total-col { color:var(--purple); font-family:'Playfair Display',serif; font-weight:500; background:rgba(167,139,250,0.04); }
+    tbody td.media-col { color:var(--orange); font-family:'Playfair Display',serif; background:rgba(251,146,60,0.04); }
+    tbody td.total-row-val { color:var(--text); font-family:'Playfair Display',serif; font-size:13px; }
+
+    /* DETALHES MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:var(--card); border-radius:20px; padding:28px; width:100%; max-width:600px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto; }
+    .modal h3 { font-family:'Playfair Display',serif; font-size:18px; margin-bottom:6px; color:var(--text); }
+    .modal-sub { font-size:13px; color:var(--text3); margin-bottom:20px; }
+    .det-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .det-table th { background:var(--card2); padding:8px 12px; font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; text-align:left; border-bottom:1px solid var(--border); }
+    .det-table td { padding:9px 12px; border-bottom:1px solid var(--border2); color:var(--text2); }
+    .det-table td:last-child { text-align:right; color:var(--red); font-weight:500; }
+    .det-table tr:hover td { background:var(--row-hover); }
+    .det-total { display:flex; justify-content:space-between; padding:12px; background:var(--input-bg); border-radius:10px; margin-top:12px; font-weight:600; }
+    .det-source { font-size:11px; background:var(--input-bg); border-radius:6px; padding:2px 8px; color:var(--text3); }
+    .det-source.manual { color:var(--purple); background:rgba(167,139,250,0.1); }
+    .det-actions { display:flex; gap:6px; justify-content:flex-end; }
+    .det-edit { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:11px; color:var(--text2); transition:all 0.2s; }
+    .det-edit:hover { border-color:var(--cyan); color:var(--cyan); }
+    .det-del { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:11px; color:var(--text2); transition:all 0.2s; }
+    .det-del:hover { border-color:var(--red); color:var(--red); }
+    .modal-close { display:block; width:100%; margin-top:16px; background:none; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:13px; cursor:pointer; color:var(--text2); font-family:'DM Sans',sans-serif; }
+
+    /* EDIT INLINE */
+    .edit-input { background:var(--input-bg); border:1.5px solid var(--cyan); border-radius:6px; padding:4px 8px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
+    .save-btn { background:var(--cyan); color:white; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer; }
+    .cancel-btn { background:none; border:1px solid var(--border); border-radius:5px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--text2); }
+
+    .toast { position:fixed; bottom:24px; right:24px; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; color:var(--text); box-shadow:var(--shadow); display:none; align-items:center; gap:8px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error { border-left:3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">👤</div>
+          <h1>Pessoal</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ANO NAV -->
+    <div class="year-nav">
+      <div class="year-nav-left">
+        <button class="year-arrow" id="btnPrevYear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="year-display" id="yearDisplay">—</div>
+        <button class="year-arrow" id="btnNextYear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <span class="year-badge" id="yearBadge"></span>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary-top">
+      <div class="sum-card">
+        <div class="sum-label">Total no Ano</div>
+        <div class="sum-value v-purple" id="sumTotal">R$ 0,00</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-label">Média Mensal</div>
+        <div class="sum-value v-orange" id="sumMedia">R$ 0,00</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-label">Maior Mês</div>
+        <div class="sum-value v-green" id="sumMaior">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- ADD MANUAL -->
+    <div class="add-form">
+      <div class="add-form-title">Lançamento manual</div>
+      <div class="form-fields">
+        <div class="field-group">
+          <div class="field-label">Mês</div>
+          <select class="field-input" id="fMes">
+            <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+            <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+            <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Categoria</div>
+          <select class="field-input" id="fCategoria">
+            <option value="Mercado">Mercado</option>
+            <option value="Condomínio">Condomínio</option>
+            <option value="Gás">Gás</option>
+            <option value="Fundo de Reserva">Fundo de Reserva</option>
+            <option value="Energia">Energia</option>
+            <option value="Aluguel">Aluguel</option>
+            <option value="Pensão">Pensão</option>
+            <option value="Farmácia">Farmácia</option>
+            <option value="Lazer">Lazer</option>
+            <option value="Academia">Academia</option>
+            <option value="Internet">Internet</option>
+            <option value="Investimento - Patrimônio">Investimento - Patrimônio</option>
+            <option value="Investimento de Recursos">Investimento de Recursos</option>
+            <option value="IPTU">IPTU</option>
+            <option value="Chamada de Capital AP">Chamada de Capital AP</option>
+            <option value="Reforma">Reforma</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Descrição</div>
+          <input type="text" class="field-input" id="fDesc" placeholder="Ex: Compra no mercado" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">Valor (R$)</div>
+          <input type="text" class="field-input" id="fValor" placeholder="0,00" inputmode="decimal" />
+        </div>
+        <div class="field-group">
+          <div class="field-label">&nbsp;</div>
+          <button class="btn-add" id="btnAdd">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA ANUAL -->
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>Gastos Pessoais — Visão Anual</h2>
+        <span style="font-size:12px;color:var(--text3)">Clique em uma célula para ver detalhes</span>
+      </div>
+      <div class="table-scroll">
+        <table id="mainTable">
+          <thead>
+            <tr id="tableHead"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL DETALHES -->
+  <div class="modal-overlay" id="modalDet">
+    <div class="modal">
+      <h3 id="detTitle">—</h3>
+      <div class="modal-sub" id="detSub">—</div>
+      <table class="det-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Origem</th>
+            <th style="text-align:right">Valor</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="detTableBody"></tbody>
+      </table>
+      <div class="det-total">
+        <span>Total</span>
+        <span id="detTotal" style="color:var(--purple)">R$ 0,00</span>
+      </div>
+      <button class="modal-close" id="btnCloseDet">Fechar</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _sb = createClient('https://wrfuiapognukqxxnwfcq.supabase.co','sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV');
+
+    const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const CATEGORIAS = ['Mercado','Condomínio','Gás','Fundo de Reserva','Energia','Aluguel','Pensão','Farmácia','Lazer','Academia','Internet','Investimento - Patrimônio','Investimento de Recursos','IPTU','Chamada de Capital AP','Reforma','Outros'];
+    const PREFIXO = 'GAZA';
+
+    let currentYear = new Date().getFullYear();
+    let allData = []; // { mes, categoria, valor, descricao, origem, data, id }
+
+    // THEME
+    let manualOverride = false;
+    const getSunsetHour = () => { const m=new Date().getMonth(); return m>=10||m<=2?19:m>=4&&m<=7?17:18; };
+    const getAutoTheme = () => (new Date().getHours()>=getSunsetHour()||new Date().getHours()<6)?'dark':'light';
+    const applyTheme = t => { document.body.classList.remove('light','dark'); document.body.classList.add(t); };
+    const toggleTheme = () => { manualOverride=true; applyTheme(document.body.classList.contains('dark')?'light':'dark'); };
+    applyTheme(getAutoTheme());
+    setInterval(()=>{ if(!manualOverride) applyTheme(getAutoTheme()); },60000);
+
+    // FORMAT
+    const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+    const parseBRL = v => { if(!v) return 0; const s=String(v).trim(); return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:parseFloat(s)||0; };
+    const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d; };
+
+    // TOAST
+    let toastT;
+    const showToast = (msg,type='success') => {
+      const t=document.getElementById('toast');
+      t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+      t.className=`toast show ${type}`;
+      clearTimeout(toastT);
+      toastT=setTimeout(()=>t.classList.remove('show'),3000);
+    };
+
+    // YEAR NAV
+    const updateYearDisplay = () => {
+      document.getElementById('yearDisplay').textContent = currentYear;
+      document.getElementById('yearBadge').textContent = currentYear===new Date().getFullYear()?'Ano atual':'';
+    };
+
+    document.getElementById('btnPrevYear').addEventListener('click',()=>{ currentYear--; updateYearDisplay(); loadAll(); });
+    document.getElementById('btnNextYear').addEventListener('click',()=>{ currentYear++; updateYearDisplay(); loadAll(); });
+
+    // DETECT CATEGORY from description
+    const detectCategoria = historico => {
+      const h = (historico||'').toUpperCase();
+      const map = {
+        'MERCADO':'Mercado','CONDOMINIO':'Condomínio','CONDOMÍNIO':'Condomínio',
+        'GAS':'Gás','GÁS':'Gás','ENERGIA':'Energia','ALUGUEL':'Aluguel',
+        'PENSAO':'Pensão','PENSÃO':'Pensão','FARMACIA':'Farmácia','FARMÁCIA':'Farmácia',
+        'LAZER':'Lazer','ACADEMIA':'Academia','INTERNET':'Internet',
+        'PATRIMONIO':'Investimento - Patrimônio','PATRIMÔNIO':'Investimento - Patrimônio',
+        'RECURSO':'Investimento de Recursos','IPTU':'IPTU',
+        'CHAMADA':'Chamada de Capital AP','REFORMA':'Reforma'
+      };
+      for(const [key,val] of Object.entries(map)){
+        if(h.includes(key)) return val;
+      }
+      return 'Outros';
+    };
+
+    // LOAD ALL
+    const loadAll = async () => {
+      allData = [];
+
+      // Load manual entries
+      const {data:manual} = await _sb.from('pessoal_lancamentos').select('*').eq('ano',currentYear);
+      (manual||[]).forEach(r=>{
+        allData.push({
+          id:r.id, mes:r.mes, categoria:r.categoria,
+          valor:parseFloat(r.valor)||0, descricao:r.descricao||'',
+          origem:'manual', data:r.data||null
+        });
+      });
+
+      // Load from caixas - filter by GAZA prefix
+      const pad = n=>String(n).padStart(2,'0');
+      const start=`${currentYear}-01-01`, end=`${currentYear}-12-31`;
+
+      const [{data:caixaData},{data:pjData},{data:pfData}] = await Promise.all([
+        _sb.from('caixa').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+        _sb.from('extrato_pj').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+        _sb.from('extrato_pf').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+      ]);
+
+      const processExtrato = (rows, origem) => {
+        (rows||[]).forEach(r=>{
+          if(!r.debito||parseFloat(r.debito)<=0) return;
+          const mes = parseInt((r.data||'').split('-')[1])||0;
+          if(!mes) return;
+          // Extract category from "GAZA - CATEGORIA" pattern
+          const parts = (r.historico||'').split('-');
+          let catStr = parts.length>1?parts.slice(1).join('-').trim():r.historico;
+          const categoria = detectCategoria(catStr) || 'Outros';
+          allData.push({
+            id:`${origem}-${r.data}-${r.historico}`,
+            mes, categoria,
+            valor:parseFloat(r.debito)||0,
+            descricao:r.historico||'',
+            origem, data:r.data
+          });
+        });
+      };
+
+      processExtrato(caixaData,'Caixa');
+      processExtrato(pjData,'Extrato PJ');
+      processExtrato(pfData,'Extrato PF');
+
+      renderTable();
+      updateSummary();
+    };
+
+    // RENDER TABLE
+    const renderTable = () => {
+      const head = document.getElementById('tableHead');
+      const body = document.getElementById('tableBody');
+
+      // Header
+      head.innerHTML = `<th>Descrição / Mês</th>${MESES.map(m=>`<th>${m}</th>`).join('')}<th class="total-col">TOTAL</th><th class="media-col">MÉDIA</th>`;
+
+      // Build matrix
+      const matrix = {};
+      CATEGORIAS.forEach(cat=>{ matrix[cat]=Array(12).fill(0); });
+
+      allData.forEach(r=>{
+        const mes = parseInt(r.mes)-1;
+        if(mes>=0&&mes<12&&CATEGORIAS.includes(r.categoria)){
+          matrix[r.categoria][mes]+=r.valor;
+        }
+      });
+
+      // Totals per month
+      const monthTotals = Array(12).fill(0);
+      CATEGORIAS.forEach(cat=>{
+        matrix[cat].forEach((v,i)=>{ monthTotals[i]+=v; });
+      });
+
+      let html = '';
+      CATEGORIAS.forEach(cat=>{
+        const vals = matrix[cat];
+        const total = vals.reduce((s,v)=>s+v,0);
+        const nonZero = vals.filter(v=>v>0).length;
+        const media = nonZero>0?total/nonZero:0;
+
+        html+=`<tr data-cat="${cat}">
+          <td>${cat}</td>
+          ${vals.map((v,i)=>`<td class="${v===0?'zero':''}" data-cat="${cat}" data-mes="${i+1}">${v===0?'—':fmtBRL(v)}</td>`).join('')}
+          <td class="total-col">${total>0?fmtBRL(total):'—'}</td>
+          <td class="media-col">${media>0?fmtBRL(media):'—'}</td>
+        </tr>`;
+      });
+
+      // Total row
+      const grandTotal = monthTotals.reduce((s,v)=>s+v,0);
+      const nonZeroMonths = monthTotals.filter(v=>v>0).length;
+      const grandMedia = nonZeroMonths>0?grandTotal/nonZeroMonths:0;
+
+      html+=`<tr class="total-row">
+        <td>TOTAL</td>
+        ${monthTotals.map(v=>`<td class="total-row-val">${v>0?fmtBRL(v):'—'}</td>`).join('')}
+        <td class="total-col total-row-val">${fmtBRL(grandTotal)}</td>
+        <td class="media-col total-row-val">${fmtBRL(grandMedia)}</td>
+      </tr>`;
+
+      body.innerHTML = html;
+
+      // Click on cell to show details
+      body.querySelectorAll('td[data-cat][data-mes]').forEach(td=>{
+        td.addEventListener('click',()=>{
+          const cat=td.dataset.cat, mes=parseInt(td.dataset.mes);
+          openDetalhes(cat, mes);
+        });
+        td.style.cursor='pointer';
+      });
+    };
+
+    // SUMMARY
+    const updateSummary = () => {
+      const total = allData.reduce((s,r)=>s+r.valor,0);
+      const byMonth = Array(12).fill(0);
+      allData.forEach(r=>{ const m=parseInt(r.mes)-1; if(m>=0&&m<12) byMonth[m]+=r.valor; });
+      const nonZero = byMonth.filter(v=>v>0);
+      const media = nonZero.length>0?nonZero.reduce((s,v)=>s+v,0)/nonZero.length:0;
+      const maior = Math.max(...byMonth);
+      const maiorMes = byMonth.indexOf(maior);
+
+      document.getElementById('sumTotal').textContent=fmtBRL(total);
+      document.getElementById('sumMedia').textContent=fmtBRL(media);
+      document.getElementById('sumMaior').textContent=`${fmtBRL(maior)} (${MESES[maiorMes]||'—'})`;
+    };
+
+    // MODAL DETALHES
+    const openDetalhes = (cat, mes) => {
+      const items = allData.filter(r=>r.categoria===cat&&parseInt(r.mes)===mes);
+      const total = items.reduce((s,r)=>s+r.valor,0);
+
+      document.getElementById('detTitle').textContent=cat;
+      document.getElementById('detSub').textContent=`${MESES[mes-1]} de ${currentYear} — ${items.length} lançamento${items.length!==1?'s':''}`;
+      document.getElementById('detTotal').textContent=fmtBRL(total);
+
+      const tbody = document.getElementById('detTableBody');
+      if(!items.length){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Nenhum lançamento neste período.</td></tr>`;
+      } else {
+        tbody.innerHTML = items.map((r,i)=>`
+          <tr id="det-row-${i}">
+            <td>${r.data?fmtDate(r.data):'—'}</td>
+            <td>${r.descricao}</td>
+            <td><span class="det-source ${r.origem==='manual'?'manual':''}">${r.origem==='manual'?'Manual':r.origem}</span></td>
+            <td>${fmtBRL(r.valor)}</td>
+            <td>
+              ${r.origem==='manual'?`
+                <div class="det-actions">
+                  <button class="det-edit" data-id="${r.id}">✏️</button>
+                  <button class="det-del" data-id="${r.id}">✕</button>
+                </div>`:''
+              }
+            </td>
+          </tr>`).join('');
+
+        tbody.querySelectorAll('.det-del').forEach(btn=>{
+          btn.addEventListener('click',async()=>{
+            if(!confirm('Excluir este lançamento?')) return;
+            await _sb.from('pessoal_lancamentos').delete().eq('id',btn.dataset.id);
+            document.getElementById('modalDet').classList.remove('show');
+            await loadAll();
+            showToast('Excluído!');
+          });
+        });
+
+        tbody.querySelectorAll('.det-edit').forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            const row = items.find(r=>String(r.id)===btn.dataset.id);
+            if(!row) return;
+            const tr = document.getElementById(`det-row-${items.indexOf(row)}`);
+            tr.innerHTML=`
+              <td><input class="edit-input" id="ed-data-${row.id}" value="${row.data||''}" style="width:80px" type="date" /></td>
+              <td><input class="edit-input" id="ed-desc-${row.id}" value="${row.descricao}" style="width:150px" /></td>
+              <td>—</td>
+              <td><input class="edit-input" id="ed-val-${row.id}" value="${row.valor}" style="width:90px;text-align:right" type="number" step="0.01" /></td>
+              <td style="white-space:nowrap">
+                <button class="save-btn" id="save-${row.id}">✓</button>
+                <button class="cancel-btn" id="cancel-${row.id}">✕</button>
+              </td>`;
+            document.getElementById(`save-${row.id}`).addEventListener('click',async()=>{
+              const data=document.getElementById(`ed-data-${row.id}`).value;
+              const desc=document.getElementById(`ed-desc-${row.id}`).value.trim();
+              const valor=parseFloat(document.getElementById(`ed-val-${row.id}`).value)||0;
+              await _sb.from('pessoal_lancamentos').update({data,descricao:desc,valor}).eq('id',row.id);
+              document.getElementById('modalDet').classList.remove('show');
+              await loadAll();
+              showToast('Atualizado!');
+            });
+            document.getElementById(`cancel-${row.id}`).addEventListener('click',()=>openDetalhes(cat,mes));
+          });
+        });
+      }
+
+      document.getElementById('modalDet').classList.add('show');
+    };
+
+    document.getElementById('btnCloseDet').addEventListener('click',()=>document.getElementById('modalDet').classList.remove('show'));
+
+    // ADD MANUAL
+    document.getElementById('btnAdd').addEventListener('click',async()=>{
+      const mes=parseInt(document.getElementById('fMes').value);
+      const categoria=document.getElementById('fCategoria').value;
+      const descricao=document.getElementById('fDesc').value.trim();
+      const valor=parseBRL(document.getElementById('fValor').value);
+
+      if(!descricao||valor<=0){showToast('Preencha descrição e valor','error');return;}
+
+      const hoje=new Date();
+      const dataStr=`${currentYear}-${String(mes).padStart(2,'0')}-${String(Math.min(hoje.getDate(),new Date(currentYear,mes,0).getDate())).padStart(2,'0')}`;
+
+      await _sb.from('pessoal_lancamentos').insert({
+        ano:currentYear, mes, categoria, descricao, valor, data:dataStr
+      });
+
+      document.getElementById('fDesc').value='';
+      document.getElementById('fValor').value='';
+      await loadAll();
+      showToast('Lançamento adicionado!');
+    });
+
+    // Set default month
+    document.getElementById('fMes').value=String(new Date().getMonth()+1);
+
+    // INIT
+    const init = async () => {
+      const {data}=await _sb.auth.getSession();
+      if(!data.session){window.location.href='index.html';return;}
+      updateYearDisplay();
+      await loadAll();
+    };
+
+    init();
+  </script>
+</body>
+</html>
