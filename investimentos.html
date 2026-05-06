@@ -147,6 +147,12 @@
     .save-btn { background:var(--cyan); color:white; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer; }
     .cancel-btn { background:none; border:1px solid var(--border); border-radius:5px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--text2); }
 
+    .perfil-btn { background:var(--input-bg); border:1.5px solid var(--border); border-radius:8px; padding:4px 14px; font-size:12px; font-weight:500; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; white-space:nowrap; }
+    .perfil-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+    .perfil-btn.active { background:var(--cyan); border-color:var(--cyan); color:white; }
+    .perfil-btn-del { background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.6); font-size:11px; margin-left:4px; }
+    .perfil-btn-del:hover { color:white; }
+
     .empty-state { text-align:center; padding:40px; color:var(--text3); }
     .empty-icon { font-size:32px; margin-bottom:10px; }
 
@@ -186,6 +192,15 @@
     <button class="tab-btn" data-tab="fundos">📂 Fundos</button>
     <button class="tab-btn" data-tab="cashback">💳 Cashback & Pontos</button>
     <button class="tab-btn" data-tab="simulador">🧮 Simulador</button>
+  </div>
+</div>
+
+<!-- PERFIL BAR -->
+<div style="background:var(--header-bg);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);position:sticky;top:104px;z-index:99;">
+  <div style="max-width:1400px;margin:0 auto;padding:8px 24px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:11px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap">Perfil:</span>
+    <div id="perfisWrap" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+    <button id="btnNovoPerfil" style="background:none;border:1px dashed var(--border);border-radius:8px;padding:4px 12px;font-size:12px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all 0.2s;">+ Novo Perfil</button>
   </div>
 </div>
 
@@ -730,6 +745,54 @@
   const fmtPct = v => (v||0).toFixed(2).replace('.',',')+' %';
   const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}`:d; };
   const today = () => new Date().toISOString().split('T')[0];
+
+  // ── PERFIS ────────────────────────────────────────────────────
+  let perfis = [];
+  let perfilAtivo = null;
+
+  const loadPerfis = async () => {
+    const {data} = await _sb.from('inv_perfis').select('*').order('id');
+    perfis = data||[];
+    if(!perfilAtivo && perfis.length) perfilAtivo = perfis[0];
+    renderPerfis();
+  };
+
+  const renderPerfis = () => {
+    const wrap = document.getElementById('perfisWrap');
+    wrap.innerHTML = '';
+    perfis.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = `perfil-btn ${perfilAtivo?.id===p.id?'active':''}`;
+      btn.innerHTML = p.nome + (perfis.length>1?` <span class="perfil-btn-del" data-id="${p.id}">✕</span>`:'');
+      btn.addEventListener('click', (e) => {
+        if(e.target.dataset.id) return;
+        perfilAtivo = p;
+        renderPerfis();
+        loadAll();
+      });
+      const delBtn = btn.querySelector('[data-id]');
+      if(delBtn) {
+        delBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if(!confirm(`Excluir perfil "${p.nome}" e todos os investimentos?`)) return;
+          const tables = ['inv_renda_fixa','inv_tesouro','inv_fiis','inv_acoes','inv_acoes_eua','inv_cripto','inv_fundos','inv_cashback'];
+          for(const t of tables) await _sb.from(t).delete().eq('perfil_id',p.id);
+          await _sb.from('inv_perfis').delete().eq('id',p.id);
+          perfilAtivo = null;
+          await loadPerfis();
+          await loadAll();
+        });
+      }
+      wrap.appendChild(btn);
+    });
+  };
+
+  document.getElementById('btnNovoPerfil').addEventListener('click', async () => {
+    const nome = prompt('Nome do novo perfil:');
+    if(!nome||!nome.trim()) return;
+    const {data} = await _sb.from('inv_perfis').insert({nome:nome.trim()}).select().single();
+    if(data) { perfilAtivo = data; await loadPerfis(); await loadAll(); }
+  });
 
   // TOAST
   let toastT;
