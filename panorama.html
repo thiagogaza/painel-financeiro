@@ -141,6 +141,13 @@
     .insight-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
     .insight-desc { font-size:12px; color:var(--text2); line-height:1.5; }
 
+    .pano-tab { background:var(--card); border:1.5px solid var(--border); border-radius:10px; padding:9px 22px; font-size:13px; font-weight:500; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+    .pano-tab:hover { border-color:var(--cyan); color:var(--cyan); }
+    .pano-tab.active { background:var(--cyan); border-color:var(--cyan); color:white; box-shadow:0 2px 12px rgba(91,200,212,0.3); }
+    .perfil-chip { background:var(--input-bg); border:1.5px solid var(--border); border-radius:8px; padding:5px 14px; font-size:12px; font-weight:500; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+    .perfil-chip:hover { border-color:var(--purple); color:var(--purple); }
+    .perfil-chip.active { background:var(--purple); border-color:var(--purple); color:white; }
+
     .empty-chart { display:flex; align-items:center; justify-content:center; height:200px; color:var(--text3); font-size:13px; flex-direction:column; gap:8px; }
     .empty-chart-icon { font-size:28px; }
 
@@ -182,167 +189,177 @@
 <main>
 
   <!-- KPIs -->
-  <div class="kpi-row" id="kpiRow">
-    <div class="kpi-card" style="--accent:var(--cyan)">
-      <div class="kpi-label">Patrimônio Total</div>
-      <div class="kpi-value" id="kpi-patrimonio">—</div>
-      <div class="kpi-sub">excl. cripto</div>
+  <!-- ABAS -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;gap:8px;">
+      <button class="pano-tab active" id="tabLoja" onclick="switchTab('loja')">
+        🏪 Loja
+      </button>
+      <button class="pano-tab" id="tabPessoal" onclick="switchTab('pessoal')">
+        👤 Pessoal
+      </button>
     </div>
-    <div class="kpi-card" style="--accent:var(--green)">
-      <div class="kpi-label">Faturamento Loja</div>
-      <div class="kpi-value" id="kpi-faturamento">—</div>
-      <div class="kpi-sub">vendas + serviços</div>
-    </div>
-    <div class="kpi-card" style="--accent:var(--red)">
-      <div class="kpi-label">Custos Loja</div>
-      <div class="kpi-value" id="kpi-custos">—</div>
-      <div class="kpi-sub">produtos + compras</div>
-    </div>
-    <div class="kpi-card" style="--accent:var(--orange)">
-      <div class="kpi-label">Margem Loja</div>
-      <div class="kpi-value" id="kpi-margem">—</div>
-      <div class="kpi-sub" id="kpi-margem-sub">no ano</div>
-    </div>
-    <div class="kpi-card" style="--accent:var(--purple)">
-      <div class="kpi-label">Gastos Pessoais</div>
-      <div class="kpi-value" id="kpi-pessoal">—</div>
-      <div class="kpi-sub">no ano</div>
-    </div>
-    <div class="kpi-card" style="--accent:var(--yellow)">
-      <div class="kpi-label">Proventos Ano</div>
-      <div class="kpi-value" id="kpi-proventos">—</div>
-      <div class="kpi-sub">FIIs + Ações</div>
+    <!-- Seletor de perfil (só aparece na aba pessoal) -->
+    <div id="perfilSelector" style="display:none;align-items:center;gap:10px;">
+      <span style="font-size:11px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase">Perfil:</span>
+      <div id="perfisWrap" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
     </div>
   </div>
 
-  <!-- GRAFICOS PRINCIPAIS -->
-  <div class="section-label">Distribuição e Composição</div>
-  <div class="charts-main">
+  <!-- ABA LOJA -->
+  <div id="content-loja">
 
-    <div class="chart-card">
-      <div class="chart-title">Patrimônio por Categoria</div>
-      <div class="chart-sub">Distribuição dos investimentos</div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="chartPatrimonio"></canvas>
-        <div class="chart-center-label">
-          <div class="chart-center-val" id="chartPatrimonioCenter">—</div>
-          <div class="chart-center-sub">total</div>
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card" style="--accent:var(--green)">
+        <div class="kpi-label">Faturamento</div>
+        <div class="kpi-value" id="kpi-faturamento">—</div>
+        <div class="kpi-sub">vendas + serviços</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--red)">
+        <div class="kpi-label">Custos</div>
+        <div class="kpi-value" id="kpi-custos">—</div>
+        <div class="kpi-sub">produtos + compras</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--orange)">
+        <div class="kpi-label">Margem</div>
+        <div class="kpi-value" id="kpi-margem">—</div>
+        <div class="kpi-sub" id="kpi-margem-sub">no ano</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--cyan)">
+        <div class="kpi-label">Lucro Líquido</div>
+        <div class="kpi-value" id="kpi-lucro">—</div>
+        <div class="kpi-sub">fat. - custos</div>
+      </div>
+    </div>
+
+    <div class="section-label">Distribuição e Evolução</div>
+    <div class="charts-main">
+      <div class="chart-card">
+        <div class="chart-title">Gastos por Classe</div>
+        <div class="chart-sub">Top classes do caixa no ano</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartLoja"></canvas></div>
+        <div class="legend-list" id="legendLoja"></div>
+      </div>
+      <div class="chart-card" style="grid-column:span 2">
+        <div class="chart-title">Vendas vs Custos — Mês a Mês</div>
+        <div class="chart-sub">Comparativo no ano</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartVendasCustos"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-label">Loja — Visão Anual por Classe</div>
+    <div class="table-anual">
+      <div class="table-anual-header">
+        <div>
+          <div class="table-anual-title">Controle de Classes — Loja</div>
+          <div class="table-anual-sub">Débitos do caixa agrupados por classe, mês a mês</div>
         </div>
       </div>
-      <div class="legend-list" id="legendPatrimonio"></div>
+      <div class="table-scroll">
+        <table><thead><tr id="tabelaLojaHead"></tr></thead><tbody id="tabelaLojaBody"></tbody></table>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Gastos Pessoais por Categoria</div>
-      <div class="chart-sub">Acumulado do ano</div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="chartPessoal"></canvas>
-        <div class="chart-center-label">
-          <div class="chart-center-val" id="chartPessoalCenter">—</div>
-          <div class="chart-center-sub">total</div>
+    <div class="section-label">Insights</div>
+    <div class="insights-grid" id="insightsLojaGrid"></div>
+
+  </div>
+
+  <!-- ABA PESSOAL -->
+  <div id="content-pessoal" style="display:none">
+
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card" style="--accent:var(--purple)">
+        <div class="kpi-label">Total no Ano</div>
+        <div class="kpi-value" id="kpi-pessoal-total">—</div>
+        <div class="kpi-sub">todos os gastos</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--orange)">
+        <div class="kpi-label">Média Mensal</div>
+        <div class="kpi-value" id="kpi-pessoal-media">—</div>
+        <div class="kpi-sub">meses com dados</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--yellow)">
+        <div class="kpi-label">Proventos Ano</div>
+        <div class="kpi-value" id="kpi-proventos">—</div>
+        <div class="kpi-sub">FIIs + Ações</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--green)">
+        <div class="kpi-label">Cobertura Proventos</div>
+        <div class="kpi-value" id="kpi-cobertura">—</div>
+        <div class="kpi-sub">% dos gastos cobertos</div>
+      </div>
+    </div>
+
+    <div class="section-label">Distribuição e Evolução</div>
+    <div class="charts-main">
+      <div class="chart-card">
+        <div class="chart-title">Gastos por Categoria</div>
+        <div class="chart-sub">Acumulado do ano</div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chartPessoal"></canvas>
+          <div class="chart-center-label">
+            <div class="chart-center-val" id="chartPessoalCenter">—</div>
+            <div class="chart-center-sub">total</div>
+          </div>
+        </div>
+        <div class="legend-list" id="legendPessoal"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Evolução Mensal</div>
+        <div class="chart-sub">Gastos pessoais mês a mês</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartPessoalMes"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Patrimônio por Categoria</div>
+        <div class="chart-sub">Distribuição dos investimentos</div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chartPatrimonio"></canvas>
+          <div class="chart-center-label">
+            <div class="chart-center-val" id="chartPatrimonioCenter">—</div>
+            <div class="chart-center-sub">total</div>
+          </div>
+        </div>
+        <div class="legend-list" id="legendPatrimonio"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Proventos Estimados por Mês</div>
+    <div class="proventos-grid" id="proventosGrid"></div>
+
+    <div class="section-label">Pessoal — Visão Anual por Categoria</div>
+    <div class="table-anual">
+      <div class="table-anual-header">
+        <div>
+          <div class="table-anual-title" id="tabelaPessoalTitulo">Gastos Pessoais — Visão Anual</div>
+          <div class="table-anual-sub">Categorias mês a mês</div>
         </div>
       </div>
-      <div class="legend-list" id="legendPessoal"></div>
+      <div class="table-scroll">
+        <table><thead><tr id="tabelaPessoalHead"></tr></thead><tbody id="tabelaPessoalBody"></tbody></table>
+      </div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-title">Gastos Loja por Classe</div>
-      <div class="chart-sub">Top categorias do caixa</div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="chartLoja"></canvas>
+    <div class="section-label">Investimentos</div>
+    <div class="charts-half">
+      <div class="chart-card">
+        <div class="chart-title">FIIs — Por Setor</div>
+        <div class="chart-sub">Distribuição da carteira</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartFiisSetor"></canvas></div>
+        <div class="legend-list" id="legendFiisSetor"></div>
       </div>
-      <div class="legend-list" id="legendLoja"></div>
+      <div class="chart-card">
+        <div class="chart-title">Ações BR — Por Setor</div>
+        <div class="chart-sub">Distribuição da carteira</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartAcoesSetor"></canvas></div>
+        <div class="legend-list" id="legendAcoesSetor"></div>
+      </div>
     </div>
+
+    <div class="section-label">Insights</div>
+    <div class="insights-grid" id="insightsPessoalGrid"></div>
 
   </div>
-
-  <!-- EVOLUÇÃO MENSAL -->
-  <div class="section-label">Evolução Mensal</div>
-  <div class="charts-wide">
-
-    <div class="chart-card">
-      <div class="chart-title">Vendas vs Custos — Loja</div>
-      <div class="chart-sub">Comparativo mês a mês no ano</div>
-      <div class="chart-wrap" style="height:240px">
-        <canvas id="chartVendasCustos"></canvas>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">Gastos Pessoais Mensais</div>
-      <div class="chart-sub">Evolução no ano</div>
-      <div class="chart-wrap" style="height:240px">
-        <canvas id="chartPessoalMes"></canvas>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- LOJA ANUAL - igual ao pessoal -->
-  <div class="section-label">Loja — Visão Anual por Classe</div>
-  <div class="table-anual">
-    <div class="table-anual-header">
-      <div>
-        <div class="table-anual-title">Controle de Classes — Loja</div>
-        <div class="table-anual-sub">Débitos do caixa agrupados por classe, mês a mês</div>
-      </div>
-    </div>
-    <div class="table-scroll">
-      <table id="tabelaLoja">
-        <thead><tr id="tabelaLojaHead"></tr></thead>
-        <tbody id="tabelaLojaBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- PESSOAL ANUAL -->
-  <div class="section-label">Pessoal — Visão Anual por Categoria</div>
-  <div class="table-anual">
-    <div class="table-anual-header">
-      <div>
-        <div class="table-anual-title">Gastos Pessoais — Visão Anual</div>
-        <div class="table-anual-sub">Categorias mês a mês — clique para expandir</div>
-      </div>
-    </div>
-    <div class="table-scroll">
-      <table id="tabelaPessoal">
-        <thead><tr id="tabelaPessoalHead"></tr></thead>
-        <tbody id="tabelaPessoalBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- PROVENTOS MENSAIS -->
-  <div class="section-label">Proventos Estimados por Mês</div>
-  <div class="proventos-grid" id="proventosGrid"></div>
-
-  <!-- CHARTS INVESTIMENTOS -->
-  <div class="section-label">Investimentos — Detalhes</div>
-  <div class="charts-half">
-
-    <div class="chart-card">
-      <div class="chart-title">FIIs — Distribuição por Setor</div>
-      <div class="chart-sub">Alocação da carteira de FIIs</div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="chartFiisSetor"></canvas>
-      </div>
-      <div class="legend-list" id="legendFiisSetor"></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title">Ações BR — Distribuição por Setor</div>
-      <div class="chart-sub">Alocação da carteira de ações</div>
-      <div class="chart-wrap" style="height:200px">
-        <canvas id="chartAcoesSetor"></canvas>
-      </div>
-      <div class="legend-list" id="legendAcoesSetor"></div>
-    </div>
-
-  </div>
-
-  <!-- INSIGHTS -->
-  <div class="section-label">Insights do Mês</div>
-  <div class="insights-grid" id="insightsGrid"></div>
 
 </main>
 
@@ -364,6 +381,41 @@
 
   let currentYear = new Date().getFullYear();
   let charts = {};
+  let activeTab = 'loja';
+  let perfis = [];
+  let perfilAtivo = null;
+
+  // TABS
+  const switchTab = async tab => {
+    activeTab = tab;
+    document.getElementById('content-loja').style.display = tab==='loja'?'block':'none';
+    document.getElementById('content-pessoal').style.display = tab==='pessoal'?'block':'none';
+    document.getElementById('tabLoja').classList.toggle('active', tab==='loja');
+    document.getElementById('tabPessoal').classList.toggle('active', tab==='pessoal');
+    document.getElementById('perfilSelector').style.display = tab==='pessoal'?'flex':'none';
+    if(tab==='pessoal') await loadPessoal();
+    else await loadLoja();
+  };
+
+  // PERFIS
+  const loadPerfis = async () => {
+    const {data} = await _sb.from('inv_perfis').select('*').order('id');
+    perfis = data||[];
+    if(!perfilAtivo && perfis.length) perfilAtivo = perfis[0];
+    renderPerfis();
+  };
+
+  const renderPerfis = () => {
+    const wrap = document.getElementById('perfisWrap');
+    wrap.innerHTML = '';
+    perfis.forEach(p=>{
+      const btn = document.createElement('button');
+      btn.className = `perfil-chip ${perfilAtivo?.id===p.id?'active':''}`;
+      btn.textContent = p.nome;
+      btn.addEventListener('click',()=>{ perfilAtivo=p; renderPerfis(); loadPessoal(); });
+      wrap.appendChild(btn);
+    });
+  };
 
   // THEME
   let manualOverride = false;
@@ -389,8 +441,8 @@
   };
 
   // YEAR NAV
-  document.getElementById('btnPrevYear').addEventListener('click',()=>{ currentYear--; document.getElementById('yearVal').textContent=currentYear; loadAll(); });
-  document.getElementById('btnNextYear').addEventListener('click',()=>{ currentYear++; document.getElementById('yearVal').textContent=currentYear; loadAll(); });
+  document.getElementById('btnPrevYear').addEventListener('click', async ()=>{ currentYear--; document.getElementById('yearVal').textContent=currentYear; await loadAll(); });
+  document.getElementById('btnNextYear').addEventListener('click', async ()=>{ currentYear++; document.getElementById('yearVal').textContent=currentYear; await loadAll(); });
 
   // DESTROY CHART
   const destroyChart = id => { if(charts[id]){ charts[id].destroy(); delete charts[id]; } };
@@ -524,85 +576,122 @@
 
   // LOAD ALL
   const loadAll = async () => {
-    const pad = n=>String(n).padStart(2,'0');
-    const start=`${currentYear}-01-01`, end=`${currentYear}-12-31`;
+    if(activeTab==='loja') await loadLoja();
+    else await loadPessoal();
+  };
 
-    showToast('Carregando dados...');
+  const loadLoja = async () => {
+    const start=`${currentYear}-01-01`, end=`${currentYear}-12-31`;
+    showToast('Carregando dados da loja...');
 
     const [
-      {data:caixaData}, {data:pjData}, {data:pfData},
-      {data:vendasData}, {data:servicosData},
-      {data:custosData}, {data:comprasData},
-      {data:pessoalData},
-      {data:fiisData}, {data:acoesData}, {data:rfData}, {data:tdData}, {data:fuData}, {data:aeData}
+      {data:caixaData},{data:pjData},{data:pfData},
+      {data:vendasData},{data:servicosData},
+      {data:custosData},{data:comprasData}
     ] = await Promise.all([
-      _sb.from('caixa').select('data,historico,classe,debito,credito').gte('data',start).lte('data',end),
+      _sb.from('caixa').select('data,historico,classe,debito').gte('data',start).lte('data',end),
       _sb.from('extrato_pj').select('data,historico,classe,debito').gte('data',start).lte('data',end),
       _sb.from('extrato_pf').select('data,historico,classe,debito').gte('data',start).lte('data',end),
       _sb.from('vendas').select('*').gte('data_ref',start).lte('data_ref',end),
       _sb.from('servicos').select('*').gte('data_ref',start).lte('data_ref',end),
       _sb.from('custos').select('*').gte('data_ref',start).lte('data_ref',end),
-      _sb.from('compras').select('*').gte('data_ref',start).lte('data_ref',end),
-      _sb.from('pessoal_lancamentos').select('*').eq('ano',currentYear),
-      _sb.from('inv_fiis').select('*'),
-      _sb.from('inv_acoes').select('*'),
-      _sb.from('inv_renda_fixa').select('*'),
-      _sb.from('inv_tesouro').select('*'),
-      _sb.from('inv_fundos').select('*'),
-      _sb.from('inv_acoes_eua').select('*')
+      _sb.from('compras').select('*').gte('data_ref',start).lte('data_ref',end)
     ]);
 
     const PRAZOS = [1,10,15,20,30,45,50,60,90,120];
+    const vendasMes=Array(12).fill(0), servicosMes=Array(12).fill(0);
+    const custosMes=Array(12).fill(0), comprasMes=Array(12).fill(0);
 
-    // ── FATURAMENTO LOJA ─────────────────────────────────
-    const vendasMes = Array(12).fill(0);
-    const servicosMes = Array(12).fill(0);
-    const custosMes = Array(12).fill(0);
-    const comprasMes = Array(12).fill(0);
-
-    (vendasData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ const t=PRAZOS.reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); vendasMes[m]+=t; } });
-    (servicosData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ const t=PRAZOS.reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); servicosMes[m]+=t; } });
+    (vendasData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ vendasMes[m]+=PRAZOS.reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); } });
+    (servicosData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ servicosMes[m]+=PRAZOS.reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); } });
     (custosData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ custosMes[m]+=(parseFloat(r.preco_custo)||0); } });
-    (comprasData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ const t=PRAZOS.filter(p=>p!==50).reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); comprasMes[m]+=t; } });
+    (comprasData||[]).forEach(r=>{ const m=parseInt((r.data_ref||'').split('-')[1])-1; if(m>=0&&m<12){ comprasMes[m]+=PRAZOS.filter(p=>p!==50).reduce((s,p)=>s+(parseFloat(r[`prazo_${p}`])||0),0); } });
 
-    const faturMes = vendasMes.map((v,i)=>v+servicosMes[i]);
-    const custoTotalMes = custosMes.map((v,i)=>v+comprasMes[i]);
-    const totalFatur = faturMes.reduce((s,v)=>s+v,0);
-    const totalCusto = custoTotalMes.reduce((s,v)=>s+v,0);
-    const margem = totalFatur>0?((totalFatur-totalCusto)/totalFatur)*100:0;
+    const faturMes=vendasMes.map((v,i)=>v+servicosMes[i]);
+    const custoTotalMes=custosMes.map((v,i)=>v+comprasMes[i]);
+    const totalFatur=faturMes.reduce((s,v)=>s+v,0);
+    const totalCusto=custoTotalMes.reduce((s,v)=>s+v,0);
+    const margem=totalFatur>0?((totalFatur-totalCusto)/totalFatur)*100:0;
+    const lucro=totalFatur-totalCusto;
 
-    // ── CAIXA CLASSES ────────────────────────────────────
-    const classeMap = {};
-    const caixaGazaMap = {};
-    const allCaixaRows = [...(caixaData||[]), ...(pjData||[]), ...(pfData||[])];
-
-    allCaixaRows.forEach(r=>{
+    // Classes
+    const classeMap={};
+    const allRows=[...(caixaData||[]),...(pjData||[]),...(pfData||[])];
+    allRows.forEach(r=>{
       if(!r.debito||parseFloat(r.debito)<=0) return;
-      const m = parseInt((r.data||'').split('-')[1])-1;
+      if((r.historico||'').toUpperCase().includes(PREFIXO)) return;
+      const m=parseInt((r.data||'').split('-')[1])-1;
       if(m<0||m>11) return;
-      const classe = (r.classe||'Outros').toUpperCase();
-
-      // Gaza pessoal
-      if((r.historico||'').toUpperCase().includes(PREFIXO)) {
-        const parts = (r.historico||'').split('-');
-        const catStr = parts.length>1?parts.slice(1).join('-').trim():r.historico;
-        const cat = detectCatPessoal(catStr);
-        if(!caixaGazaMap[cat]) caixaGazaMap[cat] = Array(12).fill(0);
-        caixaGazaMap[cat][m] += parseFloat(r.debito)||0;
-        return;
-      }
-
-      if(!classeMap[classe]) classeMap[classe] = Array(12).fill(0);
-      classeMap[classe][m] += parseFloat(r.debito)||0;
+      const classe=(r.classe||'Outros').toUpperCase();
+      if(!classeMap[classe]) classeMap[classe]=Array(12).fill(0);
+      classeMap[classe][m]+=parseFloat(r.debito)||0;
     });
 
-    // ── PESSOAL ──────────────────────────────────────────
-    const pessoalMes = Array(12).fill(0);
-    const pessoalCatMap = {};
+    // KPIs
+    document.getElementById('kpi-faturamento').textContent=fmtBRL(totalFatur);
+    document.getElementById('kpi-custos').textContent=fmtBRL(totalCusto);
+    document.getElementById('kpi-margem').textContent=margem.toFixed(1).replace('.',',')+' %';
+    document.getElementById('kpi-margem-sub').textContent=`${fmtBRL(lucro)} de lucro`;
+    document.getElementById('kpi-lucro').textContent=fmtBRL(lucro);
 
+    // Charts
+    const classeEntries=Object.entries(classeMap).map(([k,v])=>[k,v.reduce((s,x)=>s+x,0)]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    createPie('chartLoja',classeEntries.map(e=>e[0]),classeEntries.map(e=>e[1]),'');
+    renderLegend('legendLoja',classeEntries.map(e=>e[0]),classeEntries.map(e=>e[1]),CHART_COLORS);
+
+    createBar('chartVendasCustos',MESES,[
+      {label:'Faturamento',data:faturMes,backgroundColor:'rgba(52,211,153,0.7)',borderRadius:6},
+      {label:'Custos',data:custoTotalMes,backgroundColor:'rgba(248,113,113,0.7)',borderRadius:6}
+    ]);
+
+    // Tabela
+    const topClasses=Object.keys(classeMap).sort((a,b)=>classeMap[b].reduce((s,v)=>s+v,0)-classeMap[a].reduce((s,v)=>s+v,0));
+    buildAnnualTable('tabelaLojaHead','tabelaLojaBody',topClasses,classeMap,'Classe');
+
+    // Insights loja
+    const insights=[];
+    if(margem>30) insights.push({icon:'🟢',bg:'rgba(52,211,153,0.1)',title:'Margem saudável',desc:`Margem de ${margem.toFixed(1)}% — excelente resultado.`});
+    else if(margem>15) insights.push({icon:'🟡',bg:'rgba(251,191,36,0.1)',title:'Margem moderada',desc:`Margem de ${margem.toFixed(1)}% — atenção aos custos.`});
+    else if(totalFatur>0) insights.push({icon:'🔴',bg:'rgba(248,113,113,0.1)',title:'Margem baixa',desc:`Margem de ${margem.toFixed(1)}% — revise os custos.`});
+    const mesAtual=new Date().getMonth();
+    const fatMes=faturMes[mesAtual], custMes=custoTotalMes[mesAtual];
+    if(fatMes>0) insights.push({icon:'📊',bg:'rgba(91,200,212,0.1)',title:`Mês atual — ${MESES[mesAtual]}`,desc:`Faturamento: ${fmtBRL(fatMes)} | Custos: ${fmtBRL(custMes)} | Margem: ${fatMes>0?(((fatMes-custMes)/fatMes)*100).toFixed(1):0}%`});
+    const topClasse=classeEntries[0];
+    if(topClasse) insights.push({icon:'🏷️',bg:'rgba(251,146,60,0.1)',title:'Maior classe de gasto',desc:`${topClasse[0]}: ${fmtBRL(topClasse[1])} no ano.`});
+    document.getElementById('insightsLojaGrid').innerHTML=insights.map(ins=>`<div class="insight-card"><div class="insight-icon" style="background:${ins.bg}">${ins.icon}</div><div><div class="insight-title">${ins.title}</div><div class="insight-desc">${ins.desc}</div></div></div>`).join('');
+
+    showToast('Loja carregado!');
+  };
+
+  const loadPessoal = async () => {
+    if(!perfilAtivo) return;
+    const start=`${currentYear}-01-01`, end=`${currentYear}-12-31`;
+    showToast(`Carregando dados de ${perfilAtivo.nome}...`);
+
+    document.getElementById('tabelaPessoalTitulo').textContent=`${perfilAtivo.nome} — Gastos Pessoais ${currentYear}`;
+
+    const [
+      {data:caixaData},{data:pjData},{data:pfData},
+      {data:pessoalData},
+      {data:fiisData},{data:acoesData},{data:rfData},{data:tdData},{data:fuData},{data:aeData}
+    ] = await Promise.all([
+      _sb.from('caixa').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+      _sb.from('extrato_pj').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+      _sb.from('extrato_pf').select('data,historico,classe,debito').ilike('historico',`%${PREFIXO}%`).gte('data',start).lte('data',end),
+      _sb.from('pessoal_lancamentos').select('*').eq('ano',currentYear),
+      _sb.from('inv_fiis').select('*').eq('perfil_id',perfilAtivo.id),
+      _sb.from('inv_acoes').select('*').eq('perfil_id',perfilAtivo.id),
+      _sb.from('inv_renda_fixa').select('*').eq('perfil_id',perfilAtivo.id),
+      _sb.from('inv_tesouro').select('*').eq('perfil_id',perfilAtivo.id),
+      _sb.from('inv_fundos').select('*').eq('perfil_id',perfilAtivo.id),
+      _sb.from('inv_acoes_eua').select('*').eq('perfil_id',perfilAtivo.id)
+    ]);
+
+    // Pessoal matrix
+    const pessoalMes=Array(12).fill(0);
+    const pessoalCatMap={};
     CAT_PESSOAL.forEach(c=>{ pessoalCatMap[c]=Array(12).fill(0); });
 
-    // From manual
     (pessoalData||[]).forEach(r=>{
       const m=parseInt(r.mes)-1;
       if(m>=0&&m<12&&CAT_PESSOAL.includes(r.categoria)){
@@ -611,131 +700,105 @@
       }
     });
 
-    // From caixa (Gaza prefix)
-    Object.entries(caixaGazaMap).forEach(([cat,vals])=>{
-      vals.forEach((v,m)=>{
-        pessoalMes[m]+=v;
-        if(pessoalCatMap[cat]) pessoalCatMap[cat][m]+=v;
-        else { pessoalCatMap['Outros'][m]+=v; }
-      });
+    const allCaixaRows=[...(caixaData||[]),...(pjData||[]),...(pfData||[])];
+    allCaixaRows.forEach(r=>{
+      if(!r.debito||parseFloat(r.debito)<=0) return;
+      const m=parseInt((r.data||'').split('-')[1])-1;
+      if(m<0||m>11) return;
+      const parts=(r.historico||'').split('-');
+      const catStr=parts.length>1?parts.slice(1).join('-').trim():r.historico;
+      const cat=detectCatPessoal(catStr);
+      pessoalMes[m]+=parseFloat(r.debito)||0;
+      pessoalCatMap[cat][m]+=parseFloat(r.debito)||0;
     });
 
-    const totalPessoal = pessoalMes.reduce((s,v)=>s+v,0);
+    const totalPessoal=pessoalMes.reduce((s,v)=>s+v,0);
+    const nonZeroMeses=pessoalMes.filter(v=>v>0).length;
+    const mediaMensal=nonZeroMeses>0?totalPessoal/nonZeroMeses:0;
 
-    // ── INVESTIMENTOS ────────────────────────────────────
-    const invRf = (rfData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
-    const invTd = (tdData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
-    const invFiis = (fiisData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
-    const invAcoes = (acoesData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
-    const invFu = (fuData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
-    const invAe = (aeData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*(parseFloat(r.preco_medio)||0)*(parseFloat(r.cambio)||5.8),0);
-    const patrimonio = invRf+invTd+invFiis+invAcoes+invFu+invAe;
+    // Investimentos
+    const invRf=(rfData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
+    const invTd=(tdData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
+    const invFiis=(fiisData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
+    const invAcoes=(acoesData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*parseBRL(r.preco_medio),0);
+    const invFu=(fuData||[]).reduce((s,r)=>s+parseBRL(r.valor),0);
+    const invAe=(aeData||[]).reduce((s,r)=>s+(parseInt(r.cotas)||0)*(parseFloat(r.preco_medio)||0)*(parseFloat(r.cambio)||5.8),0);
+    const patrimonio=invRf+invTd+invFiis+invAcoes+invFu+invAe;
 
-    // Proventos por mes
-    const provMes = Array(12).fill(0);
-    const mesAtual = new Date().getMonth();
-    (fiisData||[]).forEach(r=>{
-      const dp = r.data_pagamento?new Date(r.data_pagamento).getMonth():mesAtual;
-      provMes[dp] += (parseInt(r.cotas)||0)*parseBRL(r.ultimo_provento);
-    });
+    // Proventos
+    const provMes=Array(12).fill(0);
+    const mesAtual=new Date().getMonth();
+    (fiisData||[]).forEach(r=>{ const dp=r.data_pagamento?new Date(r.data_pagamento).getMonth():mesAtual; provMes[dp]+=(parseInt(r.cotas)||0)*parseBRL(r.ultimo_provento); });
     (acoesData||[]).forEach(r=>{
       const freqMap={Mensal:12,Trimestral:4,Semestral:2,Anual:1,Irregular:2};
       const freq=freqMap[r.frequencia]||4;
       const divMensal=(parseInt(r.cotas)||0)*parseBRL(r.ultimo_dividendo);
-      if(r.frequencia==='Mensal'){
-        for(let i=0;i<12;i++) provMes[i]+=divMensal;
-      } else {
-        const dp=r.data_pagamento?new Date(r.data_pagamento).getMonth():mesAtual;
-        provMes[dp]+=divMensal*freq;
-      }
+      if(r.frequencia==='Mensal'){ for(let i=0;i<12;i++) provMes[i]+=divMensal; }
+      else { const dp=r.data_pagamento?new Date(r.data_pagamento).getMonth():mesAtual; provMes[dp]+=divMensal*freq; }
     });
-    const totalProventos = provMes.reduce((s,v)=>s+v,0);
+    const totalProventos=provMes.reduce((s,v)=>s+v,0);
+    const cobertura=totalPessoal>0?(totalProventos/totalPessoal)*100:0;
 
-    // ── KPIs ──────────────────────────────────────────────
-    document.getElementById('kpi-patrimonio').textContent = fmtBRL(patrimonio);
-    document.getElementById('kpi-faturamento').textContent = fmtBRL(totalFatur);
-    document.getElementById('kpi-custos').textContent = fmtBRL(totalCusto);
-    document.getElementById('kpi-margem').textContent = margem.toFixed(1).replace('.',',')+' %';
-    document.getElementById('kpi-margem-sub').textContent = `${fmtBRL(totalFatur-totalCusto)} de lucro`;
-    document.getElementById('kpi-pessoal').textContent = fmtBRL(totalPessoal);
-    document.getElementById('kpi-proventos').textContent = fmtBRL(totalProventos);
+    // KPIs
+    document.getElementById('kpi-pessoal-total').textContent=fmtBRL(totalPessoal);
+    document.getElementById('kpi-pessoal-media').textContent=fmtBRL(mediaMensal);
+    document.getElementById('kpi-proventos').textContent=fmtBRL(totalProventos);
+    document.getElementById('kpi-cobertura').textContent=cobertura.toFixed(0).replace('.',',')+'%';
+    document.getElementById('kpi-cobertura').style.color=cobertura>=100?'var(--green)':cobertura>=50?'var(--orange)':'var(--red)';
 
-    // ── CHART PATRIMÔNIO ──────────────────────────────────
-    const patrimonioLabels = ['Renda Fixa','Tesouro','FIIs','Ações BR','Ações EUA','Fundos'];
-    const patrimonioVals = [invRf,invTd,invFiis,invAcoes,invAe,invFu];
-    const patrimonioFiltered = patrimonioLabels.filter((_,i)=>patrimonioVals[i]>0);
-    const patrimonioValsFiltered = patrimonioVals.filter(v=>v>0);
-    createPie('chartPatrimonio',patrimonioFiltered,patrimonioValsFiltered,fmtBRL(patrimonio));
-    renderLegend('legendPatrimonio',patrimonioFiltered,patrimonioValsFiltered,CHART_COLORS);
-
-    // ── CHART PESSOAL ─────────────────────────────────────
-    const pessoalCatTotais = CAT_PESSOAL.map(c=>pessoalCatMap[c].reduce((s,v)=>s+v,0));
-    const pessoalCatFilt = CAT_PESSOAL.filter((_,i)=>pessoalCatTotais[i]>0);
-    const pessoalValsFilt = pessoalCatTotais.filter(v=>v>0);
+    // Charts pessoal
+    const pessoalCatTotais=CAT_PESSOAL.map(c=>pessoalCatMap[c].reduce((s,v)=>s+v,0));
+    const pessoalCatFilt=CAT_PESSOAL.filter((_,i)=>pessoalCatTotais[i]>0);
+    const pessoalValsFilt=pessoalCatTotais.filter(v=>v>0);
     createPie('chartPessoal',pessoalCatFilt,pessoalValsFilt,fmtBRL(totalPessoal));
     renderLegend('legendPessoal',pessoalCatFilt,pessoalValsFilt,CHART_COLORS);
+    document.getElementById('chartPessoalCenter').textContent=fmtBRLShort(totalPessoal);
 
-    // ── CHART LOJA CLASSES ────────────────────────────────
-    const classeEntries = Object.entries(classeMap).map(([k,v])=>[k,v.reduce((s,x)=>s+x,0)]).sort((a,b)=>b[1]-a[1]).slice(0,8);
-    const classeLabels = classeEntries.map(e=>e[0]);
-    const classeVals = classeEntries.map(e=>e[1]);
-    createPie('chartLoja',classeLabels,classeVals,'');
-    renderLegend('legendLoja',classeLabels,classeVals,CHART_COLORS);
+    createBar('chartPessoalMes',MESES,[{label:'Gastos',data:pessoalMes,backgroundColor:'rgba(167,139,250,0.7)',borderRadius:6}]);
 
-    // ── CHART VENDAS vs CUSTOS ────────────────────────────
-    createBar('chartVendasCustos', MESES, [
-      { label:'Faturamento', data:faturMes, backgroundColor:'rgba(52,211,153,0.7)', borderRadius:6 },
-      { label:'Custos', data:custoTotalMes, backgroundColor:'rgba(248,113,113,0.7)', borderRadius:6 }
-    ]);
+    // Charts patrimônio
+    const patrimonioLabels=['Renda Fixa','Tesouro','FIIs','Ações BR','Ações EUA','Fundos'];
+    const patrimonioVals=[invRf,invTd,invFiis,invAcoes,invAe,invFu];
+    const pFilt=patrimonioLabels.filter((_,i)=>patrimonioVals[i]>0);
+    const pVFilt=patrimonioVals.filter(v=>v>0);
+    createPie('chartPatrimonio',pFilt,pVFilt,fmtBRL(patrimonio));
+    renderLegend('legendPatrimonio',pFilt,pVFilt,CHART_COLORS);
+    document.getElementById('chartPatrimonioCenter').textContent=fmtBRLShort(patrimonio);
 
-    // ── CHART PESSOAL MENSAL ──────────────────────────────
-    createBar('chartPessoalMes', MESES, [
-      { label:'Gastos Pessoais', data:pessoalMes, backgroundColor:'rgba(167,139,250,0.7)', borderRadius:6 }
-    ]);
+    // FIIs setor
+    const fiiSetorMap={};
+    (fiisData||[]).forEach(r=>{ const s=r.setor||'Outros'; if(!fiiSetorMap[s]) fiiSetorMap[s]=0; fiiSetorMap[s]+=(parseInt(r.cotas)||0)*parseBRL(r.preco_medio); });
+    createPie('chartFiisSetor',Object.keys(fiiSetorMap),Object.values(fiiSetorMap),'');
+    renderLegend('legendFiisSetor',Object.keys(fiiSetorMap),Object.values(fiiSetorMap),CHART_COLORS);
 
-    // ── TABELA LOJA ───────────────────────────────────────
-    const topClasses = Object.keys(classeMap).sort((a,b)=>classeMap[b].reduce((s,v)=>s+v,0)-classeMap[a].reduce((s,v)=>s+v,0));
-    buildAnnualTable('tabelaLojaHead','tabelaLojaBody', topClasses, classeMap, 'Classe');
+    // Ações setor
+    const acSetorMap={};
+    (acoesData||[]).forEach(r=>{ const s=r.setor||'Outros'; if(!acSetorMap[s]) acSetorMap[s]=0; acSetorMap[s]+=(parseInt(r.cotas)||0)*parseBRL(r.preco_medio); });
+    createPie('chartAcoesSetor',Object.keys(acSetorMap),Object.values(acSetorMap),'');
+    renderLegend('legendAcoesSetor',Object.keys(acSetorMap),Object.values(acSetorMap),CHART_COLORS);
 
-    // ── TABELA PESSOAL ────────────────────────────────────
-    buildAnnualTable('tabelaPessoalHead','tabelaPessoalBody', CAT_PESSOAL, pessoalCatMap, 'Categoria');
-
-    // ── PROVENTOS MENSAIS ─────────────────────────────────
-    const maxProv = Math.max(...provMes,1);
-    const grid = document.getElementById('proventosGrid');
-    grid.innerHTML = MESES.map((m,i)=>`
+    // Proventos grid
+    const maxProv=Math.max(...provMes,1);
+    document.getElementById('proventosGrid').innerHTML=MESES.map((m,i)=>`
       <div class="prov-month">
         <div class="prov-month-name">${m}</div>
         <div class="prov-month-val">${provMes[i]>0?fmtBRLShort(provMes[i]):'—'}</div>
         <div class="prov-month-bar"><div class="prov-month-fill" style="width:${(provMes[i]/maxProv)*100}%"></div></div>
       </div>`).join('');
 
-    // ── FIIs POR SETOR ────────────────────────────────────
-    const fiiSetorMap = {};
-    (fiisData||[]).forEach(r=>{
-      const s=r.setor||'Outros';
-      if(!fiiSetorMap[s]) fiiSetorMap[s]=0;
-      fiiSetorMap[s]+=(parseInt(r.cotas)||0)*parseBRL(r.preco_medio);
-    });
-    const fiiSetorLabels=Object.keys(fiiSetorMap), fiiSetorVals=Object.values(fiiSetorMap);
-    createPie('chartFiisSetor',fiiSetorLabels,fiiSetorVals,'');
-    renderLegend('legendFiisSetor',fiiSetorLabels,fiiSetorVals,CHART_COLORS);
+    // Tabela pessoal
+    buildAnnualTable('tabelaPessoalHead','tabelaPessoalBody',CAT_PESSOAL,pessoalCatMap,'Categoria');
 
-    // ── AÇÕES POR SETOR ───────────────────────────────────
-    const acSetorMap = {};
-    (acoesData||[]).forEach(r=>{
-      const s=r.setor||'Outros';
-      if(!acSetorMap[s]) acSetorMap[s]=0;
-      acSetorMap[s]+=(parseInt(r.cotas)||0)*parseBRL(r.preco_medio);
-    });
-    const acSetorLabels=Object.keys(acSetorMap), acSetorVals=Object.values(acSetorMap);
-    createPie('chartAcoesSetor',acSetorLabels,acSetorVals,'');
-    renderLegend('legendAcoesSetor',acSetorLabels,acSetorVals,CHART_COLORS);
+    // Insights pessoal
+    const insP=[];
+    if(cobertura>=100) insP.push({icon:'🎯',bg:'rgba(52,211,153,0.1)',title:'Meta de independência atingida!',desc:`Proventos (${fmtBRL(totalProventos)}) cobrem ${cobertura.toFixed(0)}% dos gastos pessoais.`});
+    else insP.push({icon:'📈',bg:'rgba(167,139,250,0.1)',title:'Independência financeira',desc:`Proventos cobrem ${cobertura.toFixed(0)}% dos gastos. Faltam ${fmtBRL(Math.max(totalPessoal-totalProventos,0))} por ano.`});
+    if(patrimonio>0) insP.push({icon:'🏦',bg:'rgba(96,165,250,0.1)',title:`Patrimônio — ${perfilAtivo.nome}`,desc:`${fmtBRL(patrimonio)} investidos (excl. cripto).`});
+    const topCat=pessoalCatFilt[pessoalValsFilt.indexOf(Math.max(...pessoalValsFilt))];
+    if(topCat) insP.push({icon:'💸',bg:'rgba(251,146,60,0.1)',title:'Maior gasto pessoal',desc:`${topCat}: ${fmtBRL(Math.max(...pessoalValsFilt))} no ano.`});
+    document.getElementById('insightsPessoalGrid').innerHTML=insP.map(ins=>`<div class="insight-card"><div class="insight-icon" style="background:${ins.bg}">${ins.icon}</div><div><div class="insight-title">${ins.title}</div><div class="insight-desc">${ins.desc}</div></div></div>`).join('');
 
-    // ── INSIGHTS ──────────────────────────────────────────
-    renderInsights({totalFatur,totalCusto,margem,totalPessoal,patrimonio,totalProventos,provMes,pessoalMes});
-
-    showToast('Panorama atualizado!');
+    showToast(`${perfilAtivo.nome} carregado!`);
   };
 
   // DETECT CATEGORIA PESSOAL
@@ -746,53 +809,13 @@
     return 'Outros';
   };
 
-  // INSIGHTS
-  const renderInsights = ({totalFatur,totalCusto,margem,totalPessoal,patrimonio,totalProventos,provMes,pessoalMes}) => {
-    const grid = document.getElementById('insightsGrid');
-    const insights = [];
-    const mesAtualIdx = new Date().getMonth();
-
-    // Margem insight
-    if(margem>30) insights.push({icon:'🟢',bg:'rgba(52,211,153,0.1)',title:'Margem saudável',desc:`Margem de ${margem.toFixed(1)}% na loja — acima de 30%, excelente resultado.`});
-    else if(margem>15) insights.push({icon:'🟡',bg:'rgba(251,191,36,0.1)',title:'Margem moderada',desc:`Margem de ${margem.toFixed(1)}% na loja — atenção aos custos para melhorar.`});
-    else insights.push({icon:'🔴',bg:'rgba(248,113,113,0.1)',title:'Margem baixa',desc:`Margem de ${margem.toFixed(1)}% — revise os custos com urgência.`});
-
-    // Proventos insight
-    const provMesAtual = provMes[mesAtualIdx];
-    if(provMesAtual>0) insights.push({icon:'💰',bg:'rgba(91,200,212,0.1)',title:`Proventos em ${MESES[mesAtualIdx]}`,desc:`Estimativa de ${fmtBRL(provMesAtual)} em proventos neste mês.`});
-
-    // Pessoal vs proventos
-    const pessoalMesAtual = pessoalMes[mesAtualIdx];
-    if(pessoalMesAtual>0 && provMesAtual>0){
-      const ratio = (provMesAtual/pessoalMesAtual)*100;
-      insights.push({icon:ratio>=100?'🎯':'📈',bg:'rgba(167,139,250,0.1)',title:'Independência financeira',desc:`Proventos cobrem ${ratio.toFixed(0)}% dos gastos pessoais deste mês. ${ratio>=100?'Meta atingida!':'Continue aportando.'}`});
-    }
-
-    // Patrimônio
-    if(patrimonio>0) insights.push({icon:'🏦',bg:'rgba(96,165,250,0.1)',title:'Patrimônio investido',desc:`${fmtBRL(patrimonio)} em investimentos (excl. cripto). Continue aportando regularmente.`});
-
-    // Maior gasto pessoal
-    const catTotals = CAT_PESSOAL.map(c=>({cat:c,val:0}));
-    // (calculado acima no loadAll, aqui só exibimos)
-    if(totalPessoal>0) insights.push({icon:'👤',bg:'rgba(251,146,60,0.1)',title:'Gastos pessoais no ano',desc:`Total de ${fmtBRL(totalPessoal)} em gastos pessoais. Média mensal de ${fmtBRL(totalPessoal/Math.max(mesAtualIdx+1,1))}.`});
-
-    // Render
-    grid.innerHTML = insights.slice(0,6).map(ins=>`
-      <div class="insight-card">
-        <div class="insight-icon" style="background:${ins.bg}">${ins.icon}</div>
-        <div>
-          <div class="insight-title">${ins.title}</div>
-          <div class="insight-desc">${ins.desc}</div>
-        </div>
-      </div>`).join('');
-  };
-
   // INIT
   const init = async () => {
     const {data}=await _sb.auth.getSession();
     if(!data.session){window.location.href='index.html';return;}
     document.getElementById('yearVal').textContent=currentYear;
-    await loadAll();
+    await loadPerfis();
+    await loadLoja();
   };
 
   init();
