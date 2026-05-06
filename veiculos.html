@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veículos — Painel Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --salmon:#E07060; --cyan:#5BC8D4; --green:#34D399; --red:#F87171; --orange:#FB923C; --yellow:#FBBF24; --purple:#A78BFA; --blue:#60A5FA; --transition:0.4s cubic-bezier(0.4,0,0.2,1); }
+    body.light { --bg:#F5F2EE; --card:#FFFFFF; --card2:#FAFAFA; --text:#1A1A1A; --text2:#6B6B6B; --text3:#9A9A9A; --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.04); --shadow:0 2px 16px rgba(0,0,0,0.06); --input-bg:#F5F2EE; --toggle-bg:#E0DDD8; --row-hover:rgba(0,0,0,0.02); --header-bg:rgba(255,255,255,0.95); }
+    body.dark { --bg:#111214; --card:#1E2024; --card2:#23262B; --text:#F0EDE8; --text2:#888888; --text3:#555555; --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.03); --shadow:0 2px 16px rgba(0,0,0,0.3); --input-bg:#15171A; --toggle-bg:#2A2D32; --row-hover:rgba(255,255,255,0.03); --header-bg:rgba(30,32,36,0.95); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background var(--transition),color var(--transition); }
+    header { position:sticky; top:0; z-index:200; background:var(--header-bg); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); }
+    .header-inner { max-width:1300px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .back-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; text-decoration:none; }
+    .back-btn:hover { border-color:var(--green); color:var(--green); }
+    .page-title { display:flex; align-items:center; gap:10px; }
+    .page-title-icon { width:32px; height:32px; background:var(--green); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .page-title h1 { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); }
+    .toggle-btn { width:44px; height:24px; background:var(--toggle-bg); border-radius:12px; border:none; cursor:pointer; position:relative; transition:background var(--transition); }
+    .toggle-btn::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:var(--salmon); transition:transform var(--transition),background var(--transition); }
+    body.dark .toggle-btn::after { transform:translateX(20px); background:var(--cyan); }
+
+    main { max-width:1300px; margin:0 auto; padding:24px; }
+
+    .section-title { font-size:11px; font-weight:600; color:var(--text3); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* MONTH NAV */
+    .month-nav { display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 20px; margin-bottom:20px; box-shadow:var(--shadow); }
+    .month-nav-left { display:flex; align-items:center; gap:12px; }
+    .month-arrow { width:32px; height:32px; border-radius:8px; background:var(--input-bg); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text2); transition:all 0.2s; }
+    .month-arrow:hover { border-color:var(--green); color:var(--green); }
+    .month-arrow svg { width:14px; height:14px; }
+    .month-display { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; color:var(--text); min-width:180px; text-align:center; }
+    .month-badge { font-size:11px; color:var(--green); background:rgba(52,211,153,0.1); border-radius:20px; padding:3px 10px; }
+
+    /* VEICULOS TABS */
+    .veiculos-tabs { display:flex; gap:10px; margin-bottom:20px; }
+    .veiculo-tab { display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:2px solid var(--border); background:var(--card); cursor:pointer; font-size:14px; font-weight:500; color:var(--text2); transition:all 0.2s; box-shadow:var(--shadow); }
+    .veiculo-tab:hover { border-color:var(--green); color:var(--green); }
+    .veiculo-tab.active { border-color:var(--green); color:var(--green); background:rgba(52,211,153,0.06); }
+    .veiculo-tab .tab-icon { font-size:18px; }
+
+    /* SUMMARY */
+    .summary-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    @media(max-width:768px) { .summary-cards { grid-template-columns:repeat(2,1fr); } }
+    .summary-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow); position:relative; }
+    .summary-card-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; display:flex; align-items:center; gap:4px; }
+    .summary-card-value { font-family:'Playfair Display',serif; font-size:20px; font-weight:500; }
+    .v-green { color:var(--green); } .v-blue { color:var(--blue); } .v-orange { color:var(--orange); } .v-red { color:var(--red); }
+
+    /* INFO TOOLTIP */
+    .info-btn { background:none; border:none; cursor:pointer; color:var(--text3); font-size:13px; display:inline-flex; align-items:center; transition:color 0.2s; }
+    .info-btn:hover { color:var(--blue); }
+    .tooltip-wrap { position:relative; display:inline-flex; }
+    .tooltip-box { position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:12px; color:var(--text2); white-space:nowrap; box-shadow:var(--shadow); display:none; z-index:100; min-width:220px; white-space:normal; line-height:1.5; }
+    .tooltip-wrap:hover .tooltip-box { display:block; }
+
+    /* CONTENT SECTIONS */
+    .content-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media(max-width:900px) { .content-grid { grid-template-columns:1fr; } }
+
+    /* CARDS */
+    .section-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); margin-bottom:20px; }
+    .section-card-title { font-size:13px; font-weight:600; color:var(--text2); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+
+    /* FORM */
+    .form-row { display:grid; gap:8px; margin-bottom:12px; }
+    .form-row.cols-2 { grid-template-columns:1fr 1fr; }
+    .form-row.cols-3 { grid-template-columns:1fr 1fr 1fr; }
+    .form-row.cols-4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+    .field-group { display:flex; flex-direction:column; gap:4px; }
+    .field-label { font-size:10px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; }
+    .field-input { background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; width:100%; transition:border-color 0.2s; }
+    .field-input:focus { border-color:var(--green); }
+    .field-input::placeholder { color:var(--text3); }
+    .btn-add { background:var(--green); color:white; border:none; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(52,211,153,0.3); }
+    .btn-add.orange { background:var(--orange); }
+    .btn-add.orange:hover { box-shadow:0 4px 12px rgba(251,146,60,0.3); }
+
+    /* TABLE */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    thead th { background:var(--card2); padding:8px 12px; font-size:10px; font-weight:600; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border2); transition:background 0.15s; }
+    tbody tr:hover { background:var(--row-hover); }
+    tbody td { padding:9px 12px; color:var(--text2); vertical-align:middle; }
+    tbody td.val { font-weight:500; color:var(--text); text-align:right; }
+    tbody td.red { color:var(--red); font-weight:500; text-align:right; }
+    tbody td.green { color:var(--green); font-weight:500; text-align:right; }
+    .action-btn { background:none; border:none; cursor:pointer; padding:3px 6px; border-radius:4px; font-size:12px; transition:all 0.2s; opacity:0; }
+    tbody tr:hover .action-btn { opacity:1; }
+    .action-btn.edit:hover { color:var(--cyan); background:rgba(91,200,212,0.1); }
+    .action-btn.del:hover { color:var(--red); background:rgba(248,113,113,0.1); }
+    .edit-input { background:var(--input-bg); border:1.5px solid var(--cyan); border-radius:6px; padding:4px 8px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
+    .save-btn { background:var(--cyan); color:white; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer; }
+    .cancel-btn { background:none; border:1px solid var(--border); border-radius:5px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--text2); }
+
+    /* MANUTENCAO */
+    .man-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); margin-bottom:16px; }
+    .man-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .man-title { font-size:14px; font-weight:600; color:var(--text); }
+    .man-date { font-size:12px; color:var(--text3); }
+    .man-total { font-family:'Playfair Display',serif; font-size:16px; color:var(--red); }
+    .man-desc { font-size:12px; color:var(--text2); margin-bottom:10px; }
+    .man-actions { display:flex; gap:6px; }
+    .man-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:11px; color:var(--text2); transition:all 0.2s; }
+    .man-btn:hover { border-color:var(--green); color:var(--green); }
+    .man-btn.del:hover { border-color:var(--red); color:var(--red); }
+
+    .btn-nova-man { display:inline-flex; align-items:center; gap:6px; background:var(--orange); color:white; border:none; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; margin-bottom:16px; }
+    .btn-nova-man:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(251,146,60,0.3); }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:var(--card); border-radius:20px; padding:28px; width:100%; max-width:540px; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto; }
+    .modal h3 { font-family:'Playfair Display',serif; font-size:18px; margin-bottom:20px; color:var(--text); }
+    .modal-label { font-size:11px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; display:block; }
+    .modal-input { width:100%; background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px; padding:10px 14px; font-size:14px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; transition:border-color 0.2s; margin-bottom:14px; }
+    .modal-input:focus { border-color:var(--orange); }
+    .itens-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; max-height:200px; overflow-y:auto; }
+    .item-row { display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; background:var(--input-bg); border-radius:8px; padding:8px 12px; }
+    .item-desc { font-size:13px; color:var(--text); }
+    .item-val { font-size:13px; color:var(--red); font-weight:500; }
+    .item-del { background:none; border:none; cursor:pointer; color:var(--text3); font-size:12px; }
+    .item-del:hover { color:var(--red); }
+    .add-item-row { display:grid; grid-template-columns:1fr auto auto; gap:8px; }
+    .modal-btns { display:flex; gap:10px; margin-top:16px; }
+    .modal-save { flex:1; background:var(--orange); color:white; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+    .modal-cancel { flex:1; background:none; border:1px solid var(--border); border-radius:10px; padding:11px; font-size:14px; cursor:pointer; color:var(--text2); font-family:'DM Sans',sans-serif; }
+
+    /* CONFIGURACOES BICICLETA */
+    .config-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); margin-bottom:20px; }
+    .config-title { font-size:13px; font-weight:600; color:var(--text2); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+    .empty-state { text-align:center; padding:40px 20px; color:var(--text3); }
+    .empty-state .empty-icon { font-size:32px; margin-bottom:10px; }
+
+    .toast { position:fixed; bottom:24px; right:24px; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 18px; font-size:13px; color:var(--text); box-shadow:var(--shadow); display:none; align-items:center; gap:8px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left:3px solid var(--green); }
+    .toast.error { border-left:3px solid var(--red); }
+  </style>
+</head>
+<body class="light">
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="dashboard.html" class="back-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Dashboard
+        </a>
+        <div class="page-title">
+          <div class="page-title-icon">🚗</div>
+          <h1>Veículos</h1>
+        </div>
+      </div>
+      <button class="toggle-btn" onclick="toggleTheme()"></button>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="month-nav">
+      <div class="month-nav-left">
+        <button class="month-arrow" id="btnPrev">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="month-display" id="monthDisplay">—</div>
+        <button class="month-arrow" id="btnNext">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <span class="month-badge" id="monthBadge"></span>
+    </div>
+
+    <!-- TABS -->
+    <div class="veiculos-tabs">
+      <div class="veiculo-tab active" id="tab-carro">
+        <span class="tab-icon">🚗</span>
+        <span>Carro</span>
+      </div>
+      <div class="veiculo-tab" id="tab-bike">
+        <span class="tab-icon">⚡</span>
+        <span>Bicicleta Elétrica</span>
+      </div>
+    </div>
+
+    <!-- CARRO -->
+    <div id="section-carro">
+
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-label">Gasto Total Mês</div>
+          <div class="summary-card-value v-red" id="c-total">R$ 0,00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">
+            Média km/L
+            <div class="tooltip-wrap">
+              <button class="info-btn">ℹ</button>
+              <div class="tooltip-box">Calculado com base nos abastecimentos: km rodados entre dois abastecimentos ÷ litros do 2º abastecimento. São necessários pelo menos 2 abastecimentos.</div>
+            </div>
+          </div>
+          <div class="summary-card-value v-green" id="c-kml">— km/L</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">Custo por km</div>
+          <div class="summary-card-value v-orange" id="c-custoKm">R$ —</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">Combustível Mês</div>
+          <div class="summary-card-value v-blue" id="c-combustivel">R$ 0,00</div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+
+        <!-- ABASTECIMENTOS -->
+        <div class="section-card">
+          <div class="section-card-title">
+            ⛽ Abastecimentos
+            <div class="tooltip-wrap">
+              <button class="info-btn">ℹ</button>
+              <div class="tooltip-box">Anote sempre: litros abastecidos, valor pago e o hodômetro atual (km mostrado no painel do carro). Isso permite calcular o km/litro com precisão.</div>
+            </div>
+          </div>
+
+          <div class="form-row cols-4">
+            <div class="field-group">
+              <div class="field-label">Data</div>
+              <input type="text" class="field-input" id="ab-data" placeholder="26/04" maxlength="5" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Litros</div>
+              <input type="text" class="field-input" id="ab-litros" placeholder="40,5" inputmode="decimal" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Valor (R$)</div>
+              <input type="text" class="field-input" id="ab-valor" placeholder="280,00" inputmode="decimal" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Hodômetro (km)</div>
+              <input type="text" class="field-input" id="ab-km" placeholder="45.230" inputmode="decimal" />
+            </div>
+          </div>
+          <div class="form-row" style="grid-template-columns:1fr auto">
+            <div class="field-group">
+              <div class="field-label">Combustível</div>
+              <select class="field-input" id="ab-tipo">
+                <option value="Gasolina">Gasolina</option>
+                <option value="Etanol">Etanol</option>
+                <option value="Diesel">Diesel</option>
+                <option value="GNV">GNV</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">&nbsp;</div>
+              <button class="btn-add" id="btnAddAb">+ Adicionar</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th style="text-align:right">Litros</th>
+                  <th style="text-align:right">Valor</th>
+                  <th style="text-align:right">Hodômetro</th>
+                  <th style="text-align:right">km/L</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tb-abastecimentos">
+                <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⛽</div><p>Nenhum abastecimento.</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DESPESAS CARRO -->
+        <div class="section-card">
+          <div class="section-card-title">💰 Outras Despesas</div>
+
+          <div class="form-row cols-3">
+            <div class="field-group">
+              <div class="field-label">Data</div>
+              <input type="text" class="field-input" id="dc-data" placeholder="26/04" maxlength="5" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Descrição</div>
+              <input type="text" class="field-input" id="dc-desc" placeholder="Ex: Seguro, IPVA..." />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Valor (R$)</div>
+              <input type="text" class="field-input" id="dc-valor" placeholder="0,00" inputmode="decimal" />
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <button class="btn-add" id="btnAddDc">+ Adicionar</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th style="text-align:right">Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tb-despesas-carro">
+                <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">💰</div><p>Nenhuma despesa.</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MANUTENÇÃO -->
+      <div class="section-title">🔧 Manutenções</div>
+      <button class="btn-nova-man" id="btnNovaMan">+ Nova Manutenção</button>
+      <div id="manutencoes-list"></div>
+
+    </div>
+
+    <!-- BICICLETA ELÉTRICA -->
+    <div id="section-bike" style="display:none">
+
+      <!-- CONFIG -->
+      <div class="config-card">
+        <div class="config-title">
+          ⚙️ Configurações da Bateria
+          <div class="tooltip-wrap">
+            <button class="info-btn">ℹ</button>
+            <div class="tooltip-box">Encontre a voltagem (V) e capacidade (Ah) na etiqueta da bateria. Ex: "36V 10Ah" → 36×10=360Wh por carga. O custo do kWh está na sua conta de luz (SC ≈ R$ 0,85). Custo por carga = (Wh ÷ 1000) × custo kWh.</div>
+          </div>
+        </div>
+        <div class="form-row cols-4">
+          <div class="field-group">
+            <div class="field-label">Voltagem da bateria (V)</div>
+            <input type="number" class="field-input" id="bk-volt" placeholder="Ex: 36" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">Capacidade (Ah)</div>
+            <input type="number" class="field-input" id="bk-ah" placeholder="Ex: 10" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">
+              Custo kWh (R$)
+              <div class="tooltip-wrap" style="display:inline">
+                <button class="info-btn">ℹ</button>
+                <div class="tooltip-box">Valor do kWh está na sua conta de energia. Em SC fica em torno de R$ 0,85.</div>
+              </div>
+            </div>
+            <input type="text" class="field-input" id="bk-kwh" placeholder="Ex: 0,85" inputmode="decimal" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">&nbsp;</div>
+            <button class="btn-add" id="btnSaveConfig">Salvar Config.</button>
+          </div>
+        </div>
+        <div id="bk-calc-result" style="font-size:12px;color:var(--text3);margin-top:4px"></div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-label">Gasto Total Mês</div>
+          <div class="summary-card-value v-red" id="bk-total">R$ 0,00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">
+            Custo por carga
+            <div class="tooltip-wrap">
+              <button class="info-btn">ℹ</button>
+              <div class="tooltip-box">Calculado com base na capacidade da bateria e custo do kWh configurados acima.</div>
+            </div>
+          </div>
+          <div class="summary-card-value v-blue" id="bk-custo-carga">R$ —</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">Recargas no Mês</div>
+          <div class="summary-card-value v-green" id="bk-recargas">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">kWh Consumidos</div>
+          <div class="summary-card-value v-orange" id="bk-kwh-total">0 kWh</div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+
+        <!-- RECARGAS -->
+        <div class="section-card">
+          <div class="section-card-title">
+            ⚡ Recargas
+            <div class="tooltip-wrap">
+              <button class="info-btn">ℹ</button>
+              <div class="tooltip-box">Registre cada vez que recarregar a bateria. Informe o percentual carregado (0→100% = 1 carga completa). O custo é calculado automaticamente.</div>
+            </div>
+          </div>
+
+          <div class="form-row cols-3">
+            <div class="field-group">
+              <div class="field-label">Data</div>
+              <input type="text" class="field-input" id="bk-data" placeholder="26/04" maxlength="5" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">% Carregado</div>
+              <input type="number" class="field-input" id="bk-pct" placeholder="100" min="1" max="100" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">&nbsp;</div>
+              <button class="btn-add" id="btnAddRecarga">+ Adicionar</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th style="text-align:right">% Carregado</th>
+                  <th style="text-align:right">kWh</th>
+                  <th style="text-align:right">Custo</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tb-recargas">
+                <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">⚡</div><p>Nenhuma recarga.</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DESPESAS BIKE -->
+        <div class="section-card">
+          <div class="section-card-title">💰 Outras Despesas</div>
+
+          <div class="form-row cols-3">
+            <div class="field-group">
+              <div class="field-label">Data</div>
+              <input type="text" class="field-input" id="db-data" placeholder="26/04" maxlength="5" />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Descrição</div>
+              <input type="text" class="field-input" id="db-desc" placeholder="Ex: Pneu, corrente..." />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Valor (R$)</div>
+              <input type="text" class="field-input" id="db-valor" placeholder="0,00" inputmode="decimal" />
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <button class="btn-add" id="btnAddDb">+ Adicionar</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th style="text-align:right">Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tb-despesas-bike">
+                <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">💰</div><p>Nenhuma despesa.</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MANUTENÇÃO BIKE -->
+      <div class="section-title">🔧 Manutenções</div>
+      <button class="btn-nova-man" id="btnNovaManBike">+ Nova Manutenção</button>
+      <div id="manutencoes-bike-list"></div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL MANUTENÇÃO -->
+  <div class="modal-overlay" id="modalMan">
+    <div class="modal">
+      <h3 id="modalManTitle">Nova Manutenção</h3>
+      <input type="hidden" id="manId" />
+      <input type="hidden" id="manVeiculo" />
+      <label class="modal-label">Data</label>
+      <input type="date" class="modal-input" id="manData" />
+      <label class="modal-label">Descrição geral</label>
+      <input type="text" class="modal-input" id="manDesc" placeholder="Ex: Revisão 50.000km, Troca de pneus..." />
+      <label class="modal-label">Itens da manutenção</label>
+      <div class="itens-list" id="itensList"></div>
+      <div class="add-item-row">
+        <input type="text" class="field-input" id="itemDesc" placeholder="Ex: Amortecedor dianteiro" />
+        <input type="text" class="field-input" id="itemVal" placeholder="200,00" style="width:100px" inputmode="decimal" />
+        <button class="btn-add" id="btnAddItem" style="padding:9px 12px">+</button>
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--text3)">Total: <strong id="manTotal" style="color:var(--red)">R$ 0,00</strong></div>
+      <div class="modal-btns">
+        <button class="modal-cancel" id="btnCancelMan">Cancelar</button>
+        <button class="modal-save" id="btnSaveMan">Salvar Manutenção</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const _sb = createClient('https://wrfuiapognukqxxnwfcq.supabase.co','sb_publishable_sqGQAQViGmRVM7O2AHLrzg_wJn5K5sV');
+
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+    let activeVeiculo = 'carro';
+    let manItens = [];
+    let bikeConfig = { volt:0, ah:0, kwh_custo:0 };
+
+    // THEME
+    let manualOverride = false;
+    const getSunsetHour = () => { const m=new Date().getMonth(); return m>=10||m<=2?19:m>=4&&m<=7?17:18; };
+    const getAutoTheme = () => (new Date().getHours()>=getSunsetHour()||new Date().getHours()<6)?'dark':'light';
+    const applyTheme = t => { document.body.classList.remove('light','dark'); document.body.classList.add(t); };
+    const toggleTheme = () => { manualOverride=true; applyTheme(document.body.classList.contains('dark')?'light':'dark'); };
+    applyTheme(getAutoTheme());
+    setInterval(()=>{ if(!manualOverride) applyTheme(getAutoTheme()); },60000);
+
+    // FORMAT
+    const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+    const parseBRL = v => { if(!v) return 0; const s=String(v).trim(); return s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.'))||0:parseFloat(s)||0; };
+    const fmtDate = d => { if(!d) return ''; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0].slice(2)}`:d; };
+    const parseDate = raw => { const p=raw.split('/'); if(p.length===2) return `${currentYear}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; if(p.length===3) return `20${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; return `${currentYear}-${String(currentMonth).padStart(2,'0')}-${raw.padStart(2,'0')}`; };
+    const today = () => { const d=new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; };
+
+    // TOAST
+    let toastT;
+    const showToast = (msg,type='success') => {
+      const t=document.getElementById('toast');
+      t.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+      t.className=`toast show ${type}`;
+      clearTimeout(toastT);
+      toastT=setTimeout(()=>t.classList.remove('show'),3000);
+    };
+
+    // MONTH
+    const updateMonthDisplay = () => {
+      const d=new Date(currentYear,currentMonth-1,1);
+      const name=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+      document.getElementById('monthDisplay').textContent=name.charAt(0).toUpperCase()+name.slice(1);
+      const today2=new Date();
+      document.getElementById('monthBadge').textContent=(currentYear===today2.getFullYear()&&currentMonth===today2.getMonth()+1)?'Mês atual':'';
+    };
+
+    document.getElementById('btnPrev').addEventListener('click',()=>{ currentMonth--; if(currentMonth<1){currentMonth=12;currentYear--;} updateMonthDisplay(); loadAll(); });
+    document.getElementById('btnNext').addEventListener('click',()=>{ currentMonth++; if(currentMonth>12){currentMonth=1;currentYear++;} updateMonthDisplay(); loadAll(); });
+
+    // TABS
+    document.getElementById('tab-carro').addEventListener('click',()=>{
+      activeVeiculo='carro';
+      document.getElementById('tab-carro').classList.add('active');
+      document.getElementById('tab-bike').classList.remove('active');
+      document.getElementById('section-carro').style.display='block';
+      document.getElementById('section-bike').style.display='none';
+    });
+    document.getElementById('tab-bike').addEventListener('click',()=>{
+      activeVeiculo='bike';
+      document.getElementById('tab-bike').classList.add('active');
+      document.getElementById('tab-carro').classList.remove('active');
+      document.getElementById('section-bike').style.display='block';
+      document.getElementById('section-carro').style.display='none';
+    });
+
+    // DATE HELPER
+    const getMonthRange = () => {
+      const pad=n=>String(n).padStart(2,'0');
+      return { start:`${currentYear}-${pad(currentMonth)}-01`, end:`${currentYear}-${pad(currentMonth)}-${new Date(currentYear,currentMonth,0).getDate()}` };
+    };
+
+    // ── CARRO ──────────────────────────────────────────────────────
+
+    const loadCarro = async () => {
+      const {start,end} = getMonthRange();
+      const [{data:abs},{data:desps},{data:mans}] = await Promise.all([
+        _sb.from('veiculo_abastecimentos').select('*').gte('data_ref',start).lte('data_ref',end).order('data_ref'),
+        _sb.from('veiculo_despesas').select('*').eq('veiculo','carro').gte('data_ref',start).lte('data_ref',end).order('data_ref'),
+        _sb.from('veiculo_manutencoes').select('*').eq('veiculo','carro').order('data_ref',{ascending:false})
+      ]);
+
+      renderAbastecimentos(abs||[]);
+      renderDespesas(desps||[],'carro');
+      renderManutencoes(mans||[],'carro');
+      updateSummarioCarro(abs||[],desps||[]);
+    };
+
+    const renderAbastecimentos = rows => {
+      const tb = document.getElementById('tb-abastecimentos');
+      if(!rows.length){tb.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⛽</div><p>Nenhum abastecimento.</p></div></td></tr>`;return;}
+
+      // Calculate km/l
+      const sorted = [...rows].sort((a,b)=>a.data_ref.localeCompare(b.data_ref));
+      const kmlMap = {};
+      for(let i=1;i<sorted.length;i++){
+        const km = (parseFloat(sorted[i].hodometro)||0)-(parseFloat(sorted[i-1].hodometro)||0);
+        const lit = parseFloat(sorted[i].litros)||0;
+        if(km>0&&lit>0) kmlMap[sorted[i].id] = (km/lit).toFixed(1);
+      }
+
+      tb.innerHTML = rows.map(r=>`
+        <tr id="ab-row-${r.id}">
+          <td>${fmtDate(r.data_ref)}</td>
+          <td>${r.tipo||'Gasolina'}</td>
+          <td class="val">${parseFloat(r.litros).toFixed(1)}L</td>
+          <td class="red">${fmtBRL(r.valor)}</td>
+          <td class="val">${parseFloat(r.hodometro).toLocaleString('pt-BR')} km</td>
+          <td class="green">${kmlMap[r.id]?kmlMap[r.id]+' km/L':'—'}</td>
+          <td><button class="action-btn del" data-id="${r.id}" data-table="veiculo_abastecimentos">✕</button></td>
+        </tr>`).join('');
+
+      tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+        btn.addEventListener('click',()=>deleteRow(btn.dataset.table,btn.dataset.id,loadCarro));
+      });
+    };
+
+    const updateSummarioCarro = (abs,desps) => {
+      const totalComb = abs.reduce((s,r)=>s+(parseFloat(r.valor)||0),0);
+      const totalDesps = desps.reduce((s,r)=>s+(parseFloat(r.valor)||0),0);
+      document.getElementById('c-combustivel').textContent = fmtBRL(totalComb);
+      document.getElementById('c-total').textContent = fmtBRL(totalComb+totalDesps);
+
+      // km/l global
+      const sorted = [...abs].sort((a,b)=>a.data_ref.localeCompare(b.data_ref));
+      let totalKm=0,totalLit=0;
+      for(let i=1;i<sorted.length;i++){
+        const km=(parseFloat(sorted[i].hodometro)||0)-(parseFloat(sorted[i-1].hodometro)||0);
+        const lit=parseFloat(sorted[i].litros)||0;
+        if(km>0&&lit>0){totalKm+=km;totalLit+=lit;}
+      }
+      if(totalLit>0){
+        const kml=totalKm/totalLit;
+        document.getElementById('c-kml').textContent=kml.toFixed(1)+' km/L';
+        const custoKm=totalLit>0?(abs.reduce((s,r)=>s+(parseFloat(r.valor)||0),0)/totalKm):0;
+        document.getElementById('c-custoKm').textContent=fmtBRL(custoKm)+'/km';
+      } else {
+        document.getElementById('c-kml').textContent='— km/L';
+        document.getElementById('c-custoKm').textContent='R$ —';
+      }
+    };
+
+    document.getElementById('btnAddAb').addEventListener('click',async()=>{
+      const data=document.getElementById('ab-data').value.trim();
+      const litros=parseBRL(document.getElementById('ab-litros').value);
+      const valor=parseBRL(document.getElementById('ab-valor').value);
+      const hodometro=parseBRL(document.getElementById('ab-km').value);
+      const tipo=document.getElementById('ab-tipo').value;
+      if(!data||litros<=0||valor<=0){showToast('Preencha data, litros e valor','error');return;}
+      await _sb.from('veiculo_abastecimentos').insert({data_ref:parseDate(data),litros,valor,hodometro:hodometro||null,tipo});
+      ['ab-data','ab-litros','ab-valor','ab-km'].forEach(id=>document.getElementById(id).value='');
+      await loadCarro();
+      showToast('Abastecimento registrado!');
+    });
+
+    // ── BICICLETA ──────────────────────────────────────────────────
+
+    const loadBike = async () => {
+      const {start,end} = getMonthRange();
+      const [{data:recs},{data:desps},{data:mans},{data:cfg}] = await Promise.all([
+        _sb.from('bike_recargas').select('*').gte('data_ref',start).lte('data_ref',end).order('data_ref'),
+        _sb.from('veiculo_despesas').select('*').eq('veiculo','bike').gte('data_ref',start).lte('data_ref',end).order('data_ref'),
+        _sb.from('veiculo_manutencoes').select('*').eq('veiculo','bike').order('data_ref',{ascending:false}),
+        _sb.from('bike_config').select('*').limit(1).maybeSingle()
+      ]);
+
+      if(cfg){
+        bikeConfig={volt:cfg.volt||0,ah:cfg.ah||0,kwh_custo:cfg.kwh_custo||0};
+        document.getElementById('bk-volt').value=cfg.volt||'';
+        document.getElementById('bk-ah').value=cfg.ah||'';
+        document.getElementById('bk-kwh').value=String(cfg.kwh_custo||'').replace('.',',');
+        updateBikeCalcResult();
+      }
+
+      renderRecargas(recs||[]);
+      renderDespesas(desps||[],'bike');
+      renderManutencoes(mans||[],'bike');
+      updateSummarioBike(recs||[],desps||[]);
+    };
+
+    const getCustoCarga = (pct=100) => {
+      const {volt,ah,kwh_custo}=bikeConfig;
+      if(!volt||!ah||!kwh_custo) return 0;
+      const wh = volt*ah*(pct/100);
+      return (wh/1000)*kwh_custo;
+    };
+
+    const updateBikeCalcResult = () => {
+      const {volt,ah,kwh_custo}=bikeConfig;
+      if(volt&&ah&&kwh_custo){
+        const wh=volt*ah;
+        const custo=getCustoCarga(100);
+        document.getElementById('bk-calc-result').textContent=
+          `Bateria: ${wh}Wh (${(wh/1000).toFixed(3)}kWh) • Custo carga completa: ${fmtBRL(custo)}`;
+        document.getElementById('bk-custo-carga').textContent=fmtBRL(custo);
+      }
+    };
+
+    document.getElementById('btnSaveConfig').addEventListener('click',async()=>{
+      const volt=parseFloat(document.getElementById('bk-volt').value)||0;
+      const ah=parseFloat(document.getElementById('bk-ah').value)||0;
+      const kwh_custo=parseBRL(document.getElementById('bk-kwh').value);
+      if(!volt||!ah||!kwh_custo){showToast('Preencha voltagem, Ah e custo kWh','error');return;}
+      bikeConfig={volt,ah,kwh_custo};
+      await _sb.from('bike_config').upsert({id:1,volt,ah,kwh_custo},{onConflict:'id'});
+      updateBikeCalcResult();
+      showToast('Configurações salvas!');
+    });
+
+    const renderRecargas = rows => {
+      const tb = document.getElementById('tb-recargas');
+      if(!rows.length){tb.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">⚡</div><p>Nenhuma recarga.</p></div></td></tr>`;return;}
+      tb.innerHTML = rows.map(r=>{
+        const pct=parseFloat(r.pct_carregado)||100;
+        const kwh=(bikeConfig.volt*bikeConfig.ah*(pct/100)/1000);
+        const custo=getCustoCarga(pct);
+        return `<tr id="bk-row-${r.id}">
+          <td>${fmtDate(r.data_ref)}</td>
+          <td class="val">${pct}%</td>
+          <td class="val">${kwh.toFixed(3)} kWh</td>
+          <td class="red">${fmtBRL(custo)}</td>
+          <td><button class="action-btn del" data-id="${r.id}" data-table="bike_recargas">✕</button></td>
+        </tr>`;
+      }).join('');
+      tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+        btn.addEventListener('click',()=>deleteRow(btn.dataset.table,btn.dataset.id,loadBike));
+      });
+    };
+
+    const updateSummarioBike = (recs,desps) => {
+      const totalRecargas=recs.reduce((s,r)=>s+getCustoCarga(parseFloat(r.pct_carregado)||100),0);
+      const totalDesps=desps.reduce((s,r)=>s+(parseFloat(r.valor)||0),0);
+      const totalKwh=recs.reduce((s,r)=>s+(bikeConfig.volt*bikeConfig.ah*(parseFloat(r.pct_carregado)||100)/100/1000),0);
+      document.getElementById('bk-total').textContent=fmtBRL(totalRecargas+totalDesps);
+      document.getElementById('bk-recargas').textContent=recs.length;
+      document.getElementById('bk-kwh-total').textContent=totalKwh.toFixed(2)+' kWh';
+      document.getElementById('bk-custo-carga').textContent=fmtBRL(getCustoCarga(100));
+    };
+
+    document.getElementById('btnAddRecarga').addEventListener('click',async()=>{
+      const data=document.getElementById('bk-data').value.trim();
+      const pct=parseFloat(document.getElementById('bk-pct').value)||100;
+      if(!data){showToast('Informe a data','error');return;}
+      await _sb.from('bike_recargas').insert({data_ref:parseDate(data),pct_carregado:pct});
+      document.getElementById('bk-data').value='';
+      document.getElementById('bk-pct').value='';
+      await loadBike();
+      showToast('Recarga registrada!');
+    });
+
+    // ── DESPESAS GENÉRICAS ─────────────────────────────────────────
+
+    const renderDespesas = (rows,veiculo) => {
+      const tbId = veiculo==='carro'?'tb-despesas-carro':'tb-despesas-bike';
+      const tb = document.getElementById(tbId);
+      if(!rows.length){tb.innerHTML=`<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">💰</div><p>Nenhuma despesa.</p></div></td></tr>`;return;}
+      tb.innerHTML = rows.map(r=>`
+        <tr id="dc-row-${r.id}">
+          <td>${fmtDate(r.data_ref)}</td>
+          <td>${r.descricao||''}</td>
+          <td class="red">${fmtBRL(r.valor)}</td>
+          <td><button class="action-btn del" data-id="${r.id}" data-table="veiculo_despesas">✕</button></td>
+        </tr>`).join('');
+      tb.querySelectorAll('.action-btn.del').forEach(btn=>{
+        btn.addEventListener('click',()=>deleteRow(btn.dataset.table,btn.dataset.id,veiculo==='carro'?loadCarro:loadBike));
+      });
+    };
+
+    const addDespesa = async (veiculo,dataId,descId,valorId,reload) => {
+      const data=document.getElementById(dataId).value.trim();
+      const descricao=document.getElementById(descId).value.trim().toUpperCase();
+      const valor=parseBRL(document.getElementById(valorId).value);
+      if(!data||!descricao||valor<=0){showToast('Preencha todos os campos','error');return;}
+      await _sb.from('veiculo_despesas').insert({veiculo,data_ref:parseDate(data),descricao,valor});
+      [dataId,descId,valorId].forEach(id=>document.getElementById(id).value='');
+      await reload();
+      showToast('Despesa adicionada!');
+    };
+
+    document.getElementById('btnAddDc').addEventListener('click',()=>addDespesa('carro','dc-data','dc-desc','dc-valor',loadCarro));
+    document.getElementById('btnAddDb').addEventListener('click',()=>addDespesa('bike','db-data','db-desc','db-valor',loadBike));
+
+    // ── MANUTENÇÃO ─────────────────────────────────────────────────
+
+    const renderManutencoes = (rows,veiculo) => {
+      const listId=veiculo==='carro'?'manutencoes-list':'manutencoes-bike-list';
+      const list=document.getElementById(listId);
+      if(!rows.length){list.innerHTML=`<div class="empty-state"><div class="empty-icon">🔧</div><p>Nenhuma manutenção registrada.</p></div>`;return;}
+      list.innerHTML='';
+      rows.forEach(man=>{
+        const itens=JSON.parse(man.itens||'[]');
+        const total=itens.reduce((s,i)=>s+(parseBRL(i.valor)||0),0);
+        const card=document.createElement('div');
+        card.className='man-card';
+        card.innerHTML=`
+          <div class="man-header">
+            <div>
+              <div class="man-title">${man.descricao||'Manutenção'}</div>
+              <div class="man-date">${fmtDate(man.data_ref)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="man-total">${fmtBRL(total)}</div>
+              <div class="man-actions">
+                <button class="man-btn" data-edit="${man.id}">✏️</button>
+                <button class="man-btn del" data-del="${man.id}">✕</button>
+              </div>
+            </div>
+          </div>
+          <table style="width:100%;font-size:12px;border-collapse:collapse">
+            ${itens.map(i=>`<tr><td style="padding:4px 0;color:var(--text2)">${i.desc}</td><td style="text-align:right;color:var(--red);font-weight:500">${fmtBRL(parseBRL(i.valor))}</td></tr>`).join('')}
+          </table>`;
+        card.querySelector('[data-edit]').addEventListener('click',()=>openEditMan(man));
+        card.querySelector('[data-del]').addEventListener('click',()=>deleteRow('veiculo_manutencoes',man.id,()=>loadAll()));
+        list.appendChild(card);
+      });
+    };
+
+    const openNewMan = veiculo => {
+      document.getElementById('modalManTitle').textContent='Nova Manutenção';
+      document.getElementById('manId').value='';
+      document.getElementById('manVeiculo').value=veiculo;
+      document.getElementById('manData').value=new Date().toISOString().split('T')[0];
+      document.getElementById('manDesc').value='';
+      manItens=[];
+      renderManItens();
+      document.getElementById('modalMan').classList.add('show');
+    };
+
+    const openEditMan = man => {
+      document.getElementById('modalManTitle').textContent='Editar Manutenção';
+      document.getElementById('manId').value=man.id;
+      document.getElementById('manVeiculo').value=man.veiculo;
+      document.getElementById('manData').value=man.data_ref;
+      document.getElementById('manDesc').value=man.descricao||'';
+      manItens=JSON.parse(man.itens||'[]');
+      renderManItens();
+      document.getElementById('modalMan').classList.add('show');
+    };
+
+    const renderManItens = () => {
+      const list=document.getElementById('itensList');
+      const total=manItens.reduce((s,i)=>s+(parseBRL(i.valor)||0),0);
+      document.getElementById('manTotal').textContent=fmtBRL(total);
+      if(!manItens.length){list.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px;text-align:center">Adicione os itens abaixo</div>';return;}
+      list.innerHTML=manItens.map((item,i)=>`
+        <div class="item-row">
+          <span class="item-desc">${item.desc}</span>
+          <span class="item-val">${fmtBRL(parseBRL(item.valor))}</span>
+          <button class="item-del" data-idx="${i}">✕</button>
+        </div>`).join('');
+      list.querySelectorAll('.item-del').forEach(btn=>{
+        btn.addEventListener('click',()=>{manItens.splice(parseInt(btn.dataset.idx),1);renderManItens();});
+      });
+    };
+
+    document.getElementById('btnAddItem').addEventListener('click',()=>{
+      const desc=document.getElementById('itemDesc').value.trim();
+      const valor=document.getElementById('itemVal').value.trim();
+      if(!desc||!valor){showToast('Preencha item e valor','error');return;}
+      manItens.push({desc,valor});
+      document.getElementById('itemDesc').value='';
+      document.getElementById('itemVal').value='';
+      renderManItens();
+      document.getElementById('itemDesc').focus();
+    });
+
+    document.getElementById('btnCancelMan').addEventListener('click',()=>document.getElementById('modalMan').classList.remove('show'));
+
+    document.getElementById('btnSaveMan').addEventListener('click',async()=>{
+      const id=document.getElementById('manId').value;
+      const veiculo=document.getElementById('manVeiculo').value;
+      const data_ref=document.getElementById('manData').value;
+      const descricao=document.getElementById('manDesc').value.trim();
+      if(!data_ref){showToast('Informe a data','error');return;}
+      const obj={veiculo,data_ref,descricao,itens:JSON.stringify(manItens)};
+      if(id) await _sb.from('veiculo_manutencoes').update(obj).eq('id',id);
+      else await _sb.from('veiculo_manutencoes').insert(obj);
+      document.getElementById('modalMan').classList.remove('show');
+      await loadAll();
+      showToast(id?'Manutenção atualizada!':'Manutenção salva!');
+    });
+
+    document.getElementById('btnNovaMan').addEventListener('click',()=>openNewMan('carro'));
+    document.getElementById('btnNovaManBike').addEventListener('click',()=>openNewMan('bike'));
+
+    // ── DELETE ─────────────────────────────────────────────────────
+    const deleteRow = async (table,id,reload) => {
+      if(!confirm('Excluir este registro?')) return;
+      await _sb.from(table).delete().eq('id',id);
+      await reload();
+      showToast('Excluído!');
+    };
+
+    // ── LOAD ALL ───────────────────────────────────────────────────
+    const loadAll = async () => {
+      await Promise.all([loadCarro(),loadBike()]);
+    };
+
+    // ── INIT ───────────────────────────────────────────────────────
+    const init = async () => {
+      const {data}=await _sb.auth.getSession();
+      if(!data.session){window.location.href='index.html';return;}
+      // Set default dates
+      document.getElementById('ab-data').value=today();
+      document.getElementById('dc-data').value=today();
+      document.getElementById('bk-data').value=today();
+      document.getElementById('db-data').value=today();
+      updateMonthDisplay();
+      await loadAll();
+    };
+
+    init();
+  </script>
+</body>
+</html>
